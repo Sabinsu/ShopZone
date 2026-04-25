@@ -1,4 +1,4 @@
-// server/server.js  ← REPLACE existing file
+// server/server.js
 const express    = require('express');
 const mongoose   = require('mongoose');
 const cors       = require('cors');
@@ -10,24 +10,24 @@ dotenv.config();
 
 const app = express();
 
-// ── Security headers ──────────────────────────────────────────────────────────
+// ── Security headers ─────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
+// ── CORS ─────────────────────────────
 app.use(cors({
-  origin:      process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
 }));
 
-// ── Body parsing ──────────────────────────────────────────────────────────────
+// ── Body parsing ─────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ── Global rate limiter ───────────────────────────────────────────────────────
+// ── Rate limiter ─────────────────────
 const { apiLimiter } = require('./middleware/rateLimiter');
 app.use('/api/', apiLimiter);
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// ── Routes ───────────────────────────
 app.use('/api/auth',     require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/orders',   require('./routes/orderRoutes'));
@@ -36,27 +36,33 @@ app.use('/api/payment',  require('./routes/paymentRoutes'));
 app.use('/api/ai',       require('./routes/aiRoutes'));
 app.use('/api/seller',   require('./routes/sellerRoutes'));
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+// ── Health check ─────────────────────
+app.get('/api/health', (_, res) =>
+  res.json({ status: 'ok', time: new Date().toISOString() })
+);
 
-// ── Global error handler ──────────────────────────────────────────────────────
+// ── Error handler ────────────────────
 app.use((err, req, res, next) => {
-  console.error('[Error]', err.stack);
-  res.status(err.status || 500).json({ message: err.message || 'Internal Server Error' });
+  console.error('[Error]', err);
+  res.status(500).json({ message: err.message || 'Server Error' });
 });
 
-// ── Connect DB & Start ────────────────────────────────────────────────────────
+// ── DB + Server start ────────────────
 const PORT = process.env.PORT || 5000;
+
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`🚀 Server running on ${PORT}`));
 
-    // ── Auto import: run once on startup, then every 6 hours ──────────────
+    // cron jobs
     if (process.env.NODE_ENV !== 'test') {
       const { runImport } = require('./jobs/importProducts');
-      runImport();   // initial run
-      cron.schedule('0 */6 * * *', runImport);  // every 6 hours
+      runImport();
+      cron.schedule('0 */6 * * *', runImport);
     }
   })
-  .catch(err => { console.error(err); process.exit(1); });
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
