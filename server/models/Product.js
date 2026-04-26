@@ -1,4 +1,3 @@
-// server/models/Product.js  ← REPLACE existing file
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema({
@@ -26,34 +25,25 @@ const productSchema = new mongoose.Schema({
   isFeatured:   { type: Boolean, default: false },
   isActive:     { type: Boolean, default: true },
   tags:         [{ type: String }],
-
-  // ── Multi-vendor: who owns this product ──
   seller: {
     type: mongoose.Schema.Types.ObjectId,
     ref:  'User',
-    default: null,   // null = platform/admin product
+    default: null,
   },
-
-  // ── Auto-import tracking ──
-  externalId:  { type: String, default: '' },   // prevents duplicate imports
-  externalSrc: { type: String, default: '' },   // e.g. 'fakestore', 'dummyjson'
-
-  // ── AI / recommendations ──
-  viewCount:    { type: Number, default: 0 },
-  clickCount:   { type: Number, default: 0 },
-  aiEmbedding:  { type: [Number], select: false }, // future vector search
+  externalId:  { type: String, default: '' },
+  externalSrc: { type: String, default: '' },
+  viewCount:   { type: Number, default: 0 },
+  clickCount:  { type: Number, default: 0 },
 }, { timestamps: true });
 
 productSchema.index({ name: 'text', description: 'text', category: 'text', brand: 'text', tags: 'text' });
-productSchema.index({ externalId: 1, externalSrc: 1 }, { unique: false, sparse: true });
+productSchema.index({ externalId: 1, externalSrc: 1 }, { sparse: true });
 
-// Update ratings average when reviews change
 productSchema.methods.updateRatings = async function () {
   if (this.reviews.length === 0) {
-    this.ratings = 0;
-    this.numReviews = 0;
+    this.ratings = 0; this.numReviews = 0;
   } else {
-    this.ratings = this.reviews.reduce((a, r) => a + r.rating, 0) / this.reviews.length;
+    this.ratings    = this.reviews.reduce((a, r) => a + r.rating, 0) / this.reviews.length;
     this.numReviews = this.reviews.length;
   }
   return this.save();

@@ -1,138 +1,127 @@
-// client/src/pages/admin/AdminAnalytics.jsx  ← NEW FILE
-// Add to AdminLayout: <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
-import { useState, useEffect } from 'react'
-import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiTrendingUp, FiClock } from 'react-icons/fi'
-import api from '../../api/axios'
-import toast from 'react-hot-toast'
-
-function StatCard({ icon: Icon, label, value, sub, color }) {
-  return (
-    <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`w-11 h-11 rounded-xl ${color} flex items-center justify-center`}>
-          <Icon className="text-white text-lg" />
-        </div>
-      </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-gray-500 text-sm mt-1">{label}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
-    </div>
-  )
-}
-
-function SimpleBar({ data }) {
-  const max = Math.max(...data.map(d => d.revenue), 1)
-  return (
-    <div className="flex items-end gap-3 h-40">
-      {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-xs text-gray-500">${d.revenue.toFixed(0)}</span>
-          <div
-            className="w-full bg-orange-400 rounded-t-lg transition-all"
-            style={{ height: `${Math.max((d.revenue / max) * 120, 4)}px` }}
-          />
-          <span className="text-xs text-gray-500">{d.month}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+import { useState, useEffect } from 'react';
+import { FiTrendingUp, FiDollarSign, FiPackage, FiUsers, FiStar } from 'react-icons/fi';
+import api from '../../api/axios';
 
 export default function AdminAnalytics() {
-  const [data,    setData]    = useState(null)
-  const [sellers, setSellers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [period,  setPeriod]  = useState('30d');
 
   useEffect(() => {
-    Promise.all([
-      api.get('/admin/analytics'),
-      api.get('/admin/sellers'),
-    ]).then(([a, s]) => {
-      setData(a.data)
-      setSellers(s.data)
-    }).catch(() => toast.error('Failed to load analytics'))
-      .finally(() => setLoading(false))
-  }, [])
+    setLoading(true);
+    api.get(`/admin/analytics?period=${period}`)
+      .then(r => setData(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [period]);
 
-  const approveSeller = async (id) => {
-    try {
-      await api.put(`/admin/sellers/${id}/approve`)
-      setSellers(prev => prev.map(s => s._id === id ? { ...s, sellerInfo: { ...s.sellerInfo, approved: true } } : s))
-      toast.success('Seller approved!')
-    } catch { toast.error('Failed to approve') }
-  }
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="spinner" /></div>
-  if (!data)   return null
-
-  const pendingSellers = sellers.filter(s => !s.sellerInfo?.approved)
+  const metrics = data ? [
+    { label: 'Total Revenue',   value: `$${(data.totalRevenue  || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, icon: FiDollarSign, bg: 'bg-green-100',  text: 'text-green-600'  },
+    { label: 'Orders Placed',   value: (data.totalOrders   || 0).toLocaleString(), icon: FiPackage,   bg: 'bg-blue-100',   text: 'text-blue-600'   },
+    { label: 'New Users',       value: (data.newUsers      || 0).toLocaleString(), icon: FiUsers,     bg: 'bg-purple-100', text: 'text-purple-600' },
+    { label: 'Avg Order Value', value: `$${(data.avgOrderValue|| 0).toFixed(2)}`,  icon: FiTrendingUp,bg: 'bg-orange-100', text: 'text-orange-600' },
+  ] : [];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">Admin Analytics</h1>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <StatCard icon={FiUsers}       label="Total Users"    value={data.totalUsers}      color="bg-blue-500" />
-          <StatCard icon={FiPackage}     label="Products"       value={data.totalProducts}   color="bg-purple-500" />
-          <StatCard icon={FiShoppingCart}label="Orders"         value={data.totalOrders}     color="bg-green-500" />
-          <StatCard icon={FiDollarSign}  label="Revenue"        value={`$${data.totalRevenue?.toFixed(0)}`} color="bg-orange-500" />
-          <StatCard icon={FiClock}       label="Pending Orders" value={data.pendingOrders}   color="bg-red-500" />
-          <StatCard icon={FiTrendingUp}  label="New Users"      value={data.newUsersThisMonth} sub="this month" color="bg-teal-500" />
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <div className="flex gap-2">
+          {[['7d','7 Days'],['30d','30 Days'],['90d','90 Days'],['1y','1 Year']].map(([val, label]) => (
+            <button key={val} onClick={() => setPeriod(val)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${period === val ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >{label}</button>
+          ))}
         </div>
-
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Revenue Chart */}
-          <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
-            <h2 className="font-semibold text-gray-900 mb-6">Monthly Revenue (last 6 months)</h2>
-            <SimpleBar data={data.monthlyRevenue || []} />
-          </div>
-
-          {/* Top Products */}
-          <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
-            <h2 className="font-semibold text-gray-900 mb-4">Top Selling Products</h2>
-            <div className="space-y-3">
-              {(data.topProducts || []).map((p, i) => (
-                <div key={p._id} className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-400 w-5">#{i + 1}</span>
-                  <img src={p.images?.[0] || 'https://via.placeholder.com/40'} alt={p.name}
-                    className="w-10 h-10 rounded-lg object-cover" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-500">{p.sold} sold • ${p.price}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Seller Approvals */}
-        {pendingSellers.length > 0 && (
-          <div className="bg-white rounded-2xl shadow p-6 border border-orange-200">
-            <h2 className="font-semibold text-gray-900 mb-4">
-              Pending Seller Approvals
-              <span className="ml-2 bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full">{pendingSellers.length}</span>
-            </h2>
-            <div className="space-y-3">
-              {pendingSellers.map(s => (
-                <div key={s._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="font-medium text-sm text-gray-900">{s.name} — <span className="text-orange-600">{s.sellerInfo?.storeName}</span></p>
-                    <p className="text-xs text-gray-500">{s.email} • Applied {new Date(s.createdAt).toLocaleDateString()}</p>
-                    {s.sellerInfo?.description && <p className="text-xs text-gray-500 mt-1 italic">"{s.sellerInfo.description}"</p>}
-                  </div>
-                  <button onClick={() => approveSeller(s._id)}
-                    className="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-1.5 rounded-lg font-medium transition ml-4 shrink-0">
-                    Approve
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-100 rounded-2xl animate-pulse"/>)}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {metrics.map(({ label, value, icon: Icon, bg, text }) => (
+              <div key={label} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
+                  <Icon size={20} className={text}/>
+                </div>
+                <p className="text-2xl font-extrabold text-gray-900">{value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Revenue by day */}
+          {data?.dailyRevenue?.length > 0 && (
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm mb-6">
+              <h2 className="font-bold text-gray-900 mb-4">Daily Revenue</h2>
+              <div className="flex items-end gap-1.5 h-40 overflow-x-auto">
+                {data.dailyRevenue.map((d, i) => {
+                  const max = Math.max(...data.dailyRevenue.map(x => x.revenue), 1);
+                  const h   = Math.max(4, (d.revenue / max) * 100);
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1 shrink-0" style={{ flex: '1 0 24px' }}>
+                      <div title={`$${d.revenue.toFixed(2)}`} style={{ height: `${h}%` }}
+                        className="w-full bg-orange-400 rounded-t-sm hover:bg-orange-500 transition-colors min-h-[4px]"/>
+                      <span className="text-[10px] text-gray-400 rotate-45 origin-left whitespace-nowrap" style={{ display: i % Math.ceil(data.dailyRevenue.length / 7) === 0 ? 'block' : 'none' }}>
+                        {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Top products */}
+            {data?.topProducts?.length > 0 && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4">Top Products</h2>
+                <div className="space-y-3">
+                  {data.topProducts.map((p, i) => (
+                    <div key={p._id} className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-gray-400 w-5 shrink-0">#{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                        <p className="text-xs text-gray-400">{p.sold} sold · ${p.revenue?.toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FiStar size={12} className="text-yellow-400"/>
+                        <span className="text-xs text-gray-600">{p.ratings?.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Orders by status */}
+            {data?.ordersByStatus && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4">Orders by Status</h2>
+                <div className="space-y-2">
+                  {Object.entries(data.ordersByStatus).map(([status, count]) => {
+                    const total = Object.values(data.ordersByStatus).reduce((a, b) => a + b, 0);
+                    const pct   = total ? Math.round((count / total) * 100) : 0;
+                    return (
+                      <div key={status} className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 capitalize w-20 shrink-0">{status}</span>
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-orange-400 rounded-full" style={{ width: `${pct}%` }}/>
+                        </div>
+                        <span className="text-xs font-semibold text-gray-700 w-8 text-right">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
-  )
+  );
 }
