@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiStore, FiFileText, FiCheckCircle } from 'react-icons/fi';
+import { FiShoppingBag, FiFileText, FiCheckCircle } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -27,7 +27,7 @@ export default function BecomeSellerPage() {
   if (user.role === 'seller' && !user.sellerInfo?.approved) return (
     <div className="max-w-md mx-auto px-4 py-20 text-center">
       <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <FiStore size={28} className="text-yellow-500"/>
+        <FiShoppingBag size={28} className="text-yellow-500"/>
       </div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">Application Under Review</h2>
       <p className="text-gray-500 text-sm">Your seller application is pending admin approval. We'll notify you soon!</p>
@@ -63,7 +63,7 @@ export default function BecomeSellerPage() {
       {/* Hero */}
       <div className="text-center mb-10">
         <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <FiStore size={30} className="text-orange-500"/>
+          <FiShoppingBag size={30} className="text-orange-500"/>
         </div>
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Become a Seller</h1>
         <p className="text-gray-500 max-w-md mx-auto">Open your store on ShopZone and reach thousands of customers. It's free to apply!</p>
@@ -86,7 +86,7 @@ export default function BecomeSellerPage() {
         <div className="mb-4">
           <label className="text-sm font-semibold text-gray-700 mb-1 block">Store Name *</label>
           <div className="relative">
-            <FiStore className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15}/>
+            <FiShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15}/>
             <input
               type="text" required
               value={form.storeName}
