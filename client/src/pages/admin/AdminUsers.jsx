@@ -1,3 +1,4 @@
+import AdminLayout from '../../components/admin/AdminLayout';
 import { useState, useEffect, useCallback } from 'react';
 import { FiSearch, FiCheck, FiX, FiUser, FiShield } from 'react-icons/fi';
 import api from '../../api/axios';
@@ -62,7 +63,7 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <AdminLayout>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Users</h1>
 
       <div className="flex flex-wrap gap-3 mb-5">
@@ -175,6 +176,6 @@ export default function AdminUsers() {
           ))}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }

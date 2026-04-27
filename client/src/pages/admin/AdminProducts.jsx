@@ -1,3 +1,4 @@
+import AdminLayout from '../../components/admin/AdminLayout';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
@@ -37,7 +38,7 @@ export default function AdminProducts() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <AdminLayout>
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
         <Link to="/seller/products/new" className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm">
@@ -125,6 +126,6 @@ export default function AdminProducts() {
           ))}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }

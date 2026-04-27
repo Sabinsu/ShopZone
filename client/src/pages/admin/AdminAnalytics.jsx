@@ -1,3 +1,4 @@
+import AdminLayout from '../../components/admin/AdminLayout';
 import { useState, useEffect } from 'react';
 import { FiTrendingUp, FiDollarSign, FiPackage, FiUsers, FiStar } from 'react-icons/fi';
 import api from '../../api/axios';
@@ -23,7 +24,7 @@ export default function AdminAnalytics() {
   ] : [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <AdminLayout>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
         <div className="flex gap-2">
@@ -122,6 +123,6 @@ export default function AdminAnalytics() {
           </div>
         </>
       )}
-    </div>
+    </AdminLayout>
   );
 }
