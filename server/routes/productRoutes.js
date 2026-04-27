@@ -110,3 +110,22 @@ router.delete('/:id', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+
+// ── GET /api/products/recommended  (personalized or trending) ─────────────────
+router.get('/recommended', asyncHandler(async (req, res) => {
+  const limit    = parseInt(req.query.limit) || 10;
+  const category = req.query.category;
+  const filter   = { isActive: true, stock: { $gt: 0 } };
+  if (category) filter.category = category;
+  const products = await Product.find(filter)
+    .sort({ sold: -1, ratings: -1 }).select('-reviews').limit(limit);
+  res.json(products);
+}));
+
+// ── GET /api/products/trending ────────────────────────────────────────────────
+router.get('/trending', asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 10;
+  const products = await Product.find({ isActive: true, stock: { $gt: 0 } })
+    .sort({ viewCount: -1, sold: -1 }).select('-reviews').limit(limit);
+  res.json(products);
+}));

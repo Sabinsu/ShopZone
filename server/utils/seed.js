@@ -39,7 +39,7 @@ async function seed() {
     console.log('✅ MongoDB connected');
 
     // Clear existing data
-    await Promise.all([User.deleteMany(), Product.deleteMany(), Order.deleteMany()]);
+    await Promise.all([User.deleteMany(), Product.deleteMany(), Order.deleteMany(), UserActivity.deleteMany()]);
     console.log('🗑️  Cleared existing data');
 
     // Create admin
@@ -81,3 +81,6 @@ async function seed() {
 }
 
 seed();
+
+// Ensure UserActivity collection is created
+const UserActivity = require('../models/UserActivity');
