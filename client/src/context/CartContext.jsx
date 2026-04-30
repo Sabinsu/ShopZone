@@ -1,56 +1,68 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useReducer, useEffect } from 'react'
 
-const CartContext = createContext(null);
+const CartContext = createContext(null)
 
-const STORAGE_KEY = 'shopzone_cart';
+function cartReducer(state, action) {
+  switch (action.type) {
+    case 'ADD': {
+      const existing = state.find(i => i._id === action.item._id)
+      if (existing) {
+        return state.map(i =>
+          i._id === action.item._id
+            ? { ...i, quantity: Math.min(i.quantity + (action.qty || 1), i.stock) }
+            : i
+        )
+      }
+      return [...state, { ...action.item, quantity: action.qty || 1 }]
+    }
+    case 'REMOVE':
+      return state.filter(i => i._id !== action.id)
+    case 'UPDATE_QTY':
+      return state.map(i =>
+        i._id === action.id ? { ...i, quantity: action.qty } : i
+      )
+    case 'CLEAR':
+      return []
+    case 'INIT':
+      return action.items
+    default:
+      return state
+  }
+}
 
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
-  });
+  const [cart, dispatch] = useReducer(cartReducer, [])
 
-  // Persist cart to localStorage
+  // Restore cart from localStorage on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-  }, [cart]);
+    const saved = localStorage.getItem('cart')
+    if (saved) dispatch({ type: 'INIT', items: JSON.parse(saved) })
+  }, [])
 
-  const addToCart = useCallback((product, qty = 1) => {
-    setCart(prev => {
-      const existing = prev.find(i => i._id === product._id);
-      if (existing) {
-        return prev.map(i =>
-          i._id === product._id
-            ? { ...i, quantity: Math.min(i.quantity + qty, product.stock || 99) }
-            : i
-        );
-      }
-      return [...prev, { ...product, quantity: qty }];
-    });
-  }, []);
+  // Persist cart on every change
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart))
+  }, [cart])
 
-  const removeFromCart = useCallback((id) => {
-    setCart(prev => prev.filter(i => i._id !== id));
-  }, []);
+  const addToCart    = (item, qty = 1) => dispatch({ type: 'ADD', item, qty })
+  const removeFromCart = (id)           => dispatch({ type: 'REMOVE', id })
+  const updateQty    = (id, qty)        => dispatch({ type: 'UPDATE_QTY', id, qty })
+  const clearCart    = ()               => dispatch({ type: 'CLEAR' })
 
-  const updateQuantity = useCallback((id, qty) => {
-    if (qty < 1) return;
-    setCart(prev => prev.map(i => i._id === id ? { ...i, quantity: qty } : i));
-  }, []);
-
-  const clearCart = useCallback(() => setCart([]), []);
-
-  const cartCount    = cart.reduce((s, i) => s + i.quantity, 0);
-  const cartSubtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const isInCart     = (id) => cart.some(i => i._id === id);
+  const cartTotal   = cart.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const cartCount   = cart.reduce((sum, i) => sum + i.quantity, 0)
+  const shippingFee = cartTotal > 100 ? 0 : 10   // free shipping over $100
+  const tax         = cartTotal * 0.08            // 8% tax
+  const orderTotal  = cartTotal + shippingFee + tax
 
   return (
     <CartContext.Provider value={{
-      cart, cartCount, cartSubtotal,
-      addToCart, removeFromCart, updateQuantity, clearCart, isInCart,
+      cart, cartTotal, cartCount, shippingFee, tax, orderTotal,
+      addToCart, removeFromCart, updateQty, clearCart,
     }}>
       {children}
     </CartContext.Provider>
-  );
+  )
 }
 
-export const useCart = () => useContext(CartContext);
+export const useCart = () => useContext(CartContext)

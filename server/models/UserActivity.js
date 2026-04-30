@@ -1,18 +1,17 @@
+// Tracks user behavior for the AI recommendation engine
 const mongoose = require('mongoose');
 
-// Tracks every meaningful user action for AI recommendations
 const userActivitySchema = new mongoose.Schema({
-  user:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  product:   { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  action:    { type: String, enum: ['view','click','cart','purchase','wishlist','review'], required: true },
-  category:  { type: String, default: '' },
-  tags:      [{ type: String }],
-  duration:  { type: Number, default: 0 }, // seconds spent viewing
-  score:     { type: Number, default: 1 },  // weighted score per action type
+  user:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  type:    { type: String, enum: ['view', 'click', 'cart', 'purchase', 'search', 'wishlist'], required: true },
+  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+  category:{ type: String, default: '' },
+  keyword: { type: String, default: '' },  // for 'search' type
+  meta:    { type: Object, default: {} },
 }, { timestamps: true });
 
-userActivitySchema.index({ user: 1, createdAt: -1 });
-userActivitySchema.index({ product: 1, action: 1 });
-userActivitySchema.index({ user: 1, product: 1 }, { unique: false });
+// TTL index: auto-delete activities older than 90 days
+userActivitySchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
+userActivitySchema.index({ user: 1, type: 1, createdAt: -1 });
 
 module.exports = mongoose.model('UserActivity', userActivitySchema);

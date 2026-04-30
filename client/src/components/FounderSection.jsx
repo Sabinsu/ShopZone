@@ -1,4 +1,3 @@
-// client/src/components/FounderSection.jsx  ← NEW FILE
 // Add to HomePage.jsx: import FounderSection from '../components/FounderSection'
 // Then place <FounderSection /> near the bottom of the page
 

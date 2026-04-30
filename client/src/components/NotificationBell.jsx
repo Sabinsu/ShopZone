@@ -1,4 +1,3 @@
-// client/src/components/NotificationBell.jsx  ← NEW FILE
 // Import and use inside Navbar.jsx
 import { useState, useRef, useEffect } from 'react'
 import { FiBell } from 'react-icons/fi'

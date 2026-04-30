@@ -1,68 +1,80 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FiChevronLeft, FiPackage, FiTruck, FiCheckCircle, FiClock, FiXCircle } from 'react-icons/fi';
-import api from '../api/axios';
-import toast from 'react-hot-toast';
+import { useState, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { FiArrowLeft, FiPackage, FiTruck, FiCheck, FiX, FiMapPin, FiPhone, FiMail } from 'react-icons/fi'
+import api  from '../api/axios'
+import toast from 'react-hot-toast'
 
-const STATUS_STEPS = ['pending','confirmed','processing','shipped','delivered'];
-const ICONS = { pending: FiClock, confirmed: FiCheckCircle, processing: FiPackage, shipped: FiTruck, delivered: FiCheckCircle };
+const STATUS_STEPS = ['pending','confirmed','processing','shipped','delivered']
+const STATUS_COLORS = {
+  pending:   'bg-yellow-100 text-yellow-700',
+  confirmed: 'bg-blue-100 text-blue-700',
+  processing:'bg-purple-100 text-purple-700',
+  shipped:   'bg-indigo-100 text-indigo-700',
+  delivered: 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-700',
+  refunded:  'bg-gray-100 text-gray-600',
+}
 
 export default function OrderDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [order,   setOrder]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
+  const { id }     = useParams()
+  const navigate   = useNavigate()
+  const [order,    setOrder]    = useState(null)
+  const [loading,  setLoading]  = useState(true)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     api.get(`/orders/${id}`)
       .then(r => setOrder(r.data))
-      .catch(() => navigate('/orders'))
-      .finally(() => setLoading(false));
-  }, [id, navigate]);
+      .catch(() => { toast.error('Order not found'); navigate('/orders') })
+      .finally(() => setLoading(false))
+  }, [id])
 
   const handleCancel = async () => {
-    if (!confirm('Cancel this order?')) return;
-    setCancelling(true);
+    if (!confirm('Cancel this order?')) return
+    setCancelling(true)
     try {
-      const { data } = await api.put(`/orders/${id}/cancel`);
-      setOrder(data);
-      toast.success('Order cancelled');
+      const { data } = await api.put(`/orders/${id}/cancel`)
+      setOrder(data.order)
+      toast.success('Order cancelled')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Cannot cancel this order');
-    } finally { setCancelling(false); }
-  };
+      toast.error(err.response?.data?.message || 'Cannot cancel')
+    } finally { setCancelling(false) }
+  }
 
   if (loading) return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="h-8 bg-gray-100 rounded w-48 animate-pulse mb-8"/>
-      <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-gray-100 rounded-2xl animate-pulse"/>)}</div>
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-4 animate-pulse">
+      {[...Array(4)].map((_,i) => <div key={i} className="h-24 bg-gray-100 rounded-2xl"/>)}
     </div>
-  );
-  if (!order) return null;
+  )
+  if (!order) return null
 
-  const statusIdx  = STATUS_STEPS.indexOf(order.status);
-  const isCancelled = order.status === 'cancelled';
-  const canCancel   = ['pending','confirmed'].includes(order.status);
+  const currentStep  = STATUS_STEPS.indexOf(order.status)
+  const isCancelled  = ['cancelled','refunded'].includes(order.status)
+  const canCancel    = ['pending','confirmed'].includes(order.status)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <button onClick={() => navigate('/orders')} className="flex items-center gap-1 text-gray-500 hover:text-orange-500 mb-6 text-sm transition-colors">
-        <FiChevronLeft/> My Orders
-      </button>
-
-      <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => navigate('/orders')} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+          <FiArrowLeft size={18}/>
+        </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Order Detail</h1>
-          <p className="text-sm text-gray-500 font-mono mt-0.5">#{order._id.slice(-8).toUpperCase()}</p>
+          <h1 className="text-xl font-bold text-gray-900">
+            Order #{order._id.slice(-8).toUpperCase()}
+          </h1>
+          <p className="text-sm text-gray-500">
+            Placed on {new Date(order.createdAt).toLocaleDateString('en-US', { day:'numeric', month:'long', year:'numeric' })}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-xs font-semibold px-3 py-1.5 rounded-full capitalize ${isCancelled ? 'bg-red-100 text-red-600' : order.status === 'delivered' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+        <div className="ml-auto flex items-center gap-3">
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full capitalize ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600'}`}>
             {order.status}
           </span>
           {canCancel && (
-            <button onClick={handleCancel} disabled={cancelling} className="text-xs text-red-500 border border-red-300 px-3 py-1.5 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50">
-              {cancelling ? 'Cancelling…' : 'Cancel Order'}
+            <button onClick={handleCancel} disabled={cancelling}
+              className="text-xs text-red-500 border border-red-200 hover:border-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+              {cancelling ? 'Cancelling...' : 'Cancel Order'}
             </button>
           )}
         </div>
@@ -70,76 +82,140 @@ export default function OrderDetailPage() {
 
       {/* Progress tracker */}
       {!isCancelled && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm mb-5">
-          <h2 className="font-semibold text-gray-800 mb-4 text-sm">Order Progress</h2>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+          <h2 className="font-semibold text-gray-900 mb-5">Order Progress</h2>
           <div className="flex items-center">
-            {STATUS_STEPS.map((step, i) => {
-              const Icon    = ICONS[step] || FiPackage;
-              const done    = i <= statusIdx;
-              const current = i === statusIdx;
-              return (
-                <div key={step} className="flex-1 flex flex-col items-center relative">
-                  {i < STATUS_STEPS.length - 1 && (
-                    <div className={`absolute left-1/2 top-4 w-full h-0.5 ${i < statusIdx ? 'bg-orange-400' : 'bg-gray-200'}`}/>
-                  )}
-                  <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${done ? 'bg-orange-500' : 'bg-gray-200'} ${current ? 'ring-4 ring-orange-100' : ''}`}>
-                    <Icon size={15} className={done ? 'text-white' : 'text-gray-400'}/>
+            {STATUS_STEPS.map((step, i) => (
+              <div key={step} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                    i < currentStep  ? 'bg-green-500 text-white' :
+                    i === currentStep? 'bg-orange-500 text-white' :
+                    'bg-gray-100 text-gray-400'
+                  }`}>
+                    {i < currentStep ? <FiCheck size={16}/> : i + 1}
                   </div>
-                  <span className={`mt-2 text-xs font-medium capitalize ${done ? 'text-orange-500' : 'text-gray-400'}`}>{step}</span>
+                  <span className={`text-xs mt-2 capitalize whitespace-nowrap font-medium ${
+                    i <= currentStep ? 'text-gray-800' : 'text-gray-400'
+                  }`}>{step}</span>
                 </div>
-              );
-            })}
+                {i < STATUS_STEPS.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 mb-5 transition-colors ${i < currentStep ? 'bg-green-500' : 'bg-gray-200'}`}/>
+                )}
+              </div>
+            ))}
           </div>
+          {order.trackingNumber && (
+            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2">
+              <FiTruck className="text-indigo-500" size={16}/>
+              <span className="text-sm text-gray-700">Tracking: <strong className="font-mono">{order.trackingNumber}</strong></span>
+            </div>
+          )}
         </div>
       )}
 
       {/* Items */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm mb-5">
-        <h2 className="font-semibold text-gray-800 mb-4">Items Ordered</h2>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+        <h2 className="font-semibold text-gray-900 mb-4">Items ({order.items?.length})</h2>
         <div className="space-y-4">
-          {order.items?.map(item => (
-            <div key={item._id} className="flex items-center gap-4">
-              {item.image && <img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover bg-gray-50 shrink-0"/>}
+          {order.items?.map((item, i) => (
+            <div key={i} className="flex gap-4">
+              <img src={item.image || 'https://via.placeholder.com/64'} alt={item.name}
+                className="w-16 h-16 rounded-xl object-cover border border-gray-100 shrink-0"/>
               <div className="flex-1 min-w-0">
-                <Link to={`/products/${item.product?._id || item.product}`} className="text-sm font-medium text-gray-800 hover:text-orange-500 transition-colors line-clamp-1">{item.name}</Link>
-                <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity} · ${item.price?.toFixed(2)} each</p>
+                <p className="font-semibold text-gray-800 line-clamp-2">{item.name}</p>
+                <p className="text-sm text-gray-500 mt-0.5">Qty: {item.qty} × ${item.price?.toFixed(2)}</p>
               </div>
-              <span className="font-bold text-gray-900 text-sm shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
+              <p className="font-bold text-gray-900 shrink-0">${(item.price * item.qty).toFixed(2)}</p>
             </div>
           ))}
         </div>
-        <div className="border-t border-gray-100 mt-4 pt-4 space-y-1.5 text-sm">
+
+        <div className="border-t border-gray-100 mt-4 pt-4 space-y-2 text-sm">
           <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>${order.itemsPrice?.toFixed(2)}</span></div>
-          <div className="flex justify-between text-gray-500"><span>Shipping</span><span>{order.shippingPrice === 0 ? 'FREE' : `$${order.shippingPrice?.toFixed(2)}`}</span></div>
-          <div className="flex justify-between text-gray-500"><span>Tax</span><span>${order.taxPrice?.toFixed(2)}</span></div>
-          <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100"><span>Total</span><span>${order.totalPrice?.toFixed(2)}</span></div>
+          <div className="flex justify-between text-gray-500">
+            <span>Shipping</span>
+            <span className={order.shippingPrice === 0 ? 'text-green-600 font-medium' : ''}>
+              {order.shippingPrice === 0 ? 'FREE' : `$${order.shippingPrice?.toFixed(2)}`}
+            </span>
+          </div>
+          <div className="flex justify-between text-gray-500"><span>Tax (13%)</span><span>${order.taxPrice?.toFixed(2)}</span></div>
+          <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100">
+            <span>Total</span><span className="text-orange-600">${order.totalPrice?.toFixed(2)}</span>
+          </div>
         </div>
       </div>
 
-      {/* Shipping address */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-          <h2 className="font-semibold text-gray-800 mb-3 text-sm">Shipping Address</h2>
-          <p className="text-sm text-gray-700 font-medium">{order.shippingAddress?.fullName}</p>
-          <p className="text-sm text-gray-500 mt-1">{order.shippingAddress?.address}</p>
-          <p className="text-sm text-gray-500">{order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.zip}</p>
-          <p className="text-sm text-gray-500">{order.shippingAddress?.country}</p>
-          {order.shippingAddress?.phone && <p className="text-sm text-gray-500 mt-1">{order.shippingAddress.phone}</p>}
+      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        {/* Shipping address */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <FiMapPin className="text-orange-500" size={15}/> Shipping Address
+          </h2>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p className="font-semibold text-gray-800">{order.shippingAddress?.name}</p>
+            <p>{order.shippingAddress?.address}</p>
+            <p>{order.shippingAddress?.city}, {order.shippingAddress?.state}</p>
+            <p>{order.shippingAddress?.country} {order.shippingAddress?.zip}</p>
+            <p className="flex items-center gap-1 mt-2"><FiPhone size={12} className="text-gray-400"/>{order.shippingAddress?.phone}</p>
+            <p className="flex items-center gap-1"><FiMail size={12} className="text-gray-400"/>{order.shippingAddress?.email}</p>
+          </div>
         </div>
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-          <h2 className="font-semibold text-gray-800 mb-3 text-sm">Payment Info</h2>
-          <p className="text-sm text-gray-700 font-medium capitalize">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</p>
-          <span className={`mt-2 inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${order.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-            {order.isPaid ? `Paid · ${new Date(order.paidAt).toLocaleDateString()}` : 'Not paid yet'}
-          </span>
-          {order.trackingNumber && (
-            <div className="mt-3">
-              <p className="text-xs text-gray-400">Tracking Number</p>
-              <p className="text-sm font-mono font-medium text-gray-800">{order.trackingNumber}</p>
+
+        {/* Payment info */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h2 className="font-semibold text-gray-900 mb-3">Payment</h2>
+          <div className="text-sm space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">Method:</span>
+              <span className="font-semibold uppercase bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md text-xs">
+                {order.paymentMethod}
+              </span>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">Status:</span>
+              <span className={`font-semibold text-xs px-2 py-0.5 rounded-full ${order.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                {order.isPaid ? `Paid on ${new Date(order.paidAt).toLocaleDateString()}` : 'Not paid yet'}
+              </span>
+            </div>
+            {order.paymentMethod === 'cod' && !order.isPaid && (
+              <p className="text-xs text-gray-400 mt-2 bg-orange-50 border border-orange-100 rounded-lg p-2">
+                💵 Payment will be collected when delivered
+              </p>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Status history */}
+      {order.statusHistory?.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h2 className="font-semibold text-gray-900 mb-4">Status History</h2>
+          <div className="space-y-3">
+            {[...order.statusHistory].reverse().map((h, i) => (
+              <div key={i} className="flex items-start gap-3 text-sm">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-white text-xs ${
+                  h.status === 'delivered' ? 'bg-green-500' :
+                  h.status === 'cancelled' ? 'bg-red-500' :
+                  h.status === 'shipped'   ? 'bg-indigo-500' : 'bg-orange-400'
+                }`}>
+                  {h.status === 'delivered' ? <FiCheck size={11}/> :
+                   h.status === 'cancelled' ? <FiX size={11}/> :
+                   h.status === 'shipped'   ? <FiTruck size={11}/> :
+                   <FiPackage size={11}/>}
+                </div>
+                <div className="flex-1">
+                  <span className="font-semibold capitalize text-gray-800">{h.status}</span>
+                  {h.note && <p className="text-gray-500 text-xs mt-0.5">{h.note}</p>}
+                </div>
+                <span className="text-xs text-gray-400 shrink-0">
+                  {new Date(h.createdAt).toLocaleDateString('en-US', { day:'numeric', month:'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }

@@ -1,4 +1,3 @@
-// server/utils/emailService.js  ← NEW FILE
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({

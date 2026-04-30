@@ -1,4 +1,3 @@
-// client/src/pages/seller/BecomeSeller.jsx  ← NEW FILE
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiShoppingBag, FiCheckCircle } from 'react-icons/fi'

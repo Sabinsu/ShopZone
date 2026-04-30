@@ -5,160 +5,70 @@ const User         = require('../models/User');
 const Product      = require('../models/Product');
 const Order        = require('../models/Order');
 const { protect, admin } = require('../middleware/authMiddleware');
+const { sendSellerApproval } = require('../utils/emailService');
 
 // All admin routes require protect + admin
 router.use(protect, admin);
 
 // ── GET /api/admin/analytics ──────────────────────────────────────────────────
 router.get('/analytics', asyncHandler(async (req, res) => {
-  const period = req.query.period || '30d';
-  const days   = period === '7d' ? 7 : period === '90d' ? 90 : period === '1y' ? 365 : 30;
-  const since  = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const [
+    totalUsers, totalProducts, totalOrders,
+    orders, newUsersThisMonth, topProducts
+  ] = await Promise.all([
+    User.countDocuments(),
+    Product.countDocuments({ isActive: true }),
+    Order.countDocuments(),
+    Order.find().select('totalPrice isPaid isDelivered createdAt'),
+    User.countDocuments({ createdAt: { $gte: new Date(new Date().setDate(1)) } }),
+    Product.find().sort({ sold: -1 }).limit(5).select('name sold price images'),
+  ]);
 
-  const [totalUsers, totalProducts, allOrders, periodOrders, topProducts, recentOrders, pendingSellers] =
-    await Promise.all([
-      User.countDocuments(),
-      Product.countDocuments({ isActive: true }),
-      Order.find().select('totalPrice isPaid status createdAt user').populate('user', 'name email'),
-      Order.find({ createdAt: { $gte: since } }).select('totalPrice isPaid status createdAt'),
-      Product.find({ isActive: true }).sort({ sold: -1 }).limit(5).select('name sold price ratings images category'),
-      Order.find().sort({ createdAt: -1 }).limit(8).populate('user', 'name').select('totalPrice status createdAt user'),
-      User.countDocuments({ role: 'seller', 'sellerInfo.approved': false }),
-    ]);
+  const totalRevenue   = orders.filter(o => o.isPaid).reduce((s, o) => s + o.totalPrice, 0);
+  const pendingOrders  = orders.filter(o => !o.isDelivered).length;
+  const todayOrders    = orders.filter(o => {
+    const d = new Date(o.createdAt);
+    const t = new Date();
+    return d.toDateString() === t.toDateString();
+  }).length;
 
-  const paidOrders   = periodOrders.filter(o => o.isPaid);
-  const totalRevenue = paidOrders.reduce((s, o) => s + o.totalPrice, 0);
-  const avgOrderValue= paidOrders.length ? totalRevenue / paidOrders.length : 0;
-  const newUsers     = await User.countDocuments({ createdAt: { $gte: since } });
-
-  // Orders by status
-  const ordersByStatus = {};
-  allOrders.forEach(o => { ordersByStatus[o.status] = (ordersByStatus[o.status] || 0) + 1; });
-
-  // Daily revenue (last N days)
-  const dailyRevenue = [];
-  for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
-    const day   = new Date(); day.setDate(day.getDate() - i); day.setHours(0,0,0,0);
-    const next  = new Date(day); next.setDate(next.getDate() + 1);
-    const rev   = paidOrders
-      .filter(o => new Date(o.createdAt) >= day && new Date(o.createdAt) < next)
-      .reduce((s, o) => s + o.totalPrice, 0);
-    dailyRevenue.push({ date: day.toISOString(), revenue: rev });
+  // Revenue by month (last 6)
+  const monthlyRevenue = [];
+  for (let i = 5; i >= 0; i--) {
+    const d     = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    const end   = new Date(d.getFullYear(), d.getMonth() - i + 1, 0);
+    const rev   = orders.filter(o => o.isPaid && o.createdAt >= start && o.createdAt <= end)
+                        .reduce((s, o) => s + o.totalPrice, 0);
+    monthlyRevenue.push({ month: start.toLocaleString('default', { month: 'short' }), revenue: rev });
   }
 
-  // Top products with revenue
-  const topWithRevenue = topProducts.map(p => ({
-    _id: p._id, name: p.name, sold: p.sold,
-    revenue: p.sold * p.price, ratings: p.ratings,
-  }));
-
   res.json({
-    totalRevenue, totalOrders: periodOrders.length, totalUsers, totalProducts,
-    avgOrderValue, newUsers, ordersByStatus, dailyRevenue,
-    topProducts: topWithRevenue, recentOrders, pendingSellers,
+    totalUsers, totalProducts, totalOrders, totalRevenue,
+    pendingOrders, todayOrders, newUsersThisMonth,
+    topProducts, monthlyRevenue,
   });
-}));
-
-// ── GET /api/admin/products ───────────────────────────────────────────────────
-router.get('/products', asyncHandler(async (req, res) => {
-  const page   = Math.max(1, parseInt(req.query.page) || 1);
-  const limit  = parseInt(req.query.limit) || 15;
-  const search = req.query.search;
-  const query  = search ? { $text: { $search: search } } : {};
-
-  const [products, total] = await Promise.all([
-    Product.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit)
-      .populate('seller', 'name sellerInfo.storeName'),
-    Product.countDocuments(query),
-  ]);
-  res.json({ products, pages: Math.ceil(total / limit), total });
-}));
-
-// ── DELETE /api/admin/products/:id ───────────────────────────────────────────
-router.delete('/products/:id', asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Product not found' });
-  await product.deleteOne();
-  res.json({ message: 'Product deleted' });
-}));
-
-// ── PUT /api/admin/products/:id/feature ──────────────────────────────────────
-router.put('/products/:id/feature', asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Product not found' });
-  product.isFeatured = !product.isFeatured;
-  await product.save();
-  res.json({ message: `Product ${product.isFeatured ? 'featured' : 'unfeatured'}`, product });
-}));
-
-// ── GET /api/admin/orders ─────────────────────────────────────────────────────
-router.get('/orders', asyncHandler(async (req, res) => {
-  const page   = Math.max(1, parseInt(req.query.page) || 1);
-  const limit  = parseInt(req.query.limit) || 15;
-  const filter = {};
-  if (req.query.status) filter.status = req.query.status;
-
-  const [orders, total] = await Promise.all([
-    Order.find(filter).populate('user', 'name email').sort({ createdAt: -1 })
-      .skip((page - 1) * limit).limit(limit),
-    Order.countDocuments(filter),
-  ]);
-  res.json({ orders, pages: Math.ceil(total / limit), total });
 }));
 
 // ── GET /api/admin/users ──────────────────────────────────────────────────────
 router.get('/users', asyncHandler(async (req, res) => {
-  const page   = Math.max(1, parseInt(req.query.page) || 1);
-  const limit  = parseInt(req.query.limit) || 15;
-  const filter = {};
-  if (req.query.role)   filter.role   = req.query.role;
-  if (req.query.search) {
-    const s = req.query.search;
-    filter.$or = [{ name: { $regex: s, $options: 'i' } }, { email: { $regex: s, $options: 'i' } }];
-  }
-
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = 20;
   const [users, total] = await Promise.all([
-    User.find(filter).select('-password').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-    User.countDocuments(filter),
+    User.find().select('-password').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+    User.countDocuments(),
   ]);
   res.json({ users, pages: Math.ceil(total / limit), total });
 }));
 
-// ── PUT /api/admin/users/:id/role ─────────────────────────────────────────────
-router.put('/users/:id/role', asyncHandler(async (req, res) => {
+// ── PUT /api/admin/users/:id ──────────────────────────────────────────────────
+router.put('/users/:id', asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
-  if (user._id.toString() === req.user._id.toString())
-    return res.status(400).json({ message: 'Cannot change your own role' });
-  user.role = req.body.role;
+  if (req.body.role)     user.role     = req.body.role;
+  if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
   await user.save();
-  res.json({ message: 'Role updated', user });
-}));
-
-// ── PUT /api/admin/users/:id/approve-seller ───────────────────────────────────
-router.put('/users/:id/approve-seller', asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-  const approve = req.body.approve !== false;
-  user.sellerInfo      = user.sellerInfo || {};
-  user.sellerInfo.approved = approve;
-  if (!approve) user.role = 'user';
-  await user.save();
-  await user.pushNotification(
-    approve ? 'Your seller account is approved! Start listing products.' : 'Your seller application was not approved.',
-    'system', approve ? '/seller' : '/'
-  ).catch(() => {});
-  res.json({ message: approve ? 'Seller approved' : 'Seller rejected', user });
-}));
-
-// ── PUT /api/admin/users/:id/status ───────────────────────────────────────────
-router.put('/users/:id/status', asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-  if (user.role === 'admin') return res.status(400).json({ message: 'Cannot deactivate admin' });
-  user.isActive = req.body.isActive;
-  await user.save();
-  res.json({ message: 'User status updated', user });
+  res.json({ message: 'User updated', user });
 }));
 
 // ── DELETE /api/admin/users/:id ───────────────────────────────────────────────
@@ -168,6 +78,51 @@ router.delete('/users/:id', asyncHandler(async (req, res) => {
   if (user.role === 'admin') return res.status(400).json({ message: 'Cannot delete admin' });
   await user.deleteOne();
   res.json({ message: 'User removed' });
+}));
+
+// ── GET /api/admin/sellers  (pending approvals) ───────────────────────────────
+router.get('/sellers', asyncHandler(async (req, res) => {
+  const sellers = await User.find({ role: 'seller' }).select('-password').sort({ createdAt: -1 });
+  res.json(sellers);
+}));
+
+// ── PUT /api/admin/sellers/:id/approve ───────────────────────────────────────
+router.put('/sellers/:id/approve', asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user || user.role !== 'seller') return res.status(404).json({ message: 'Seller not found' });
+  user.sellerInfo.approved = true;
+  await user.save();
+  await sendSellerApproval({ to: user.email, name: user.name }).catch(console.error);
+  await user.pushNotification('Your seller account has been approved! Start listing products.', 'system', '/seller/products/new');
+  res.json({ message: 'Seller approved', user });
+}));
+
+// ── GET /api/admin/orders ─────────────────────────────────────────────────────
+router.get('/orders', asyncHandler(async (req, res) => {
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = 20;
+  const [orders, total] = await Promise.all([
+    Order.find().populate('user', 'name email').sort({ createdAt: -1 })
+      .skip((page - 1) * limit).limit(limit),
+    Order.countDocuments(),
+  ]);
+  res.json({ orders, pages: Math.ceil(total / limit), total });
+}));
+
+// ── PUT /api/admin/products/:id/feature ───────────────────────────────────────
+router.put('/products/:id/feature', asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) return res.status(404).json({ message: 'Product not found' });
+  product.isFeatured = !product.isFeatured;
+  await product.save();
+  res.json({ message: `Product ${product.isFeatured ? 'featured' : 'unfeatured'}`, product });
+}));
+
+// ── GET /api/admin/import-history ────────────────────────────────────────────
+router.get('/import-history', asyncHandler(async (req, res) => {
+  const imported = await Product.find({ externalSrc: { $ne: '' } })
+    .select('name category externalSrc createdAt price').sort({ createdAt: -1 }).limit(50);
+  res.json(imported);
 }));
 
 module.exports = router;

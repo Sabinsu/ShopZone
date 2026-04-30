@@ -1,4 +1,3 @@
-// server/middleware/authMiddleware.js  ← REPLACE existing file
 const jwt  = require('jsonwebtoken');
 const User = require('../models/User');
 

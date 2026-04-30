@@ -1,4 +1,3 @@
-// server/routes/authRoutes.js  ← REPLACE existing file
 const express       = require('express');
 const asyncHandler  = require('express-async-handler');
 const crypto        = require('crypto');
@@ -170,20 +169,3 @@ router.put('/reset-password/:token', asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
-
-
-// ── PUT /api/auth/change-password ─────────────────────────────────────────────
-router.put('/change-password', protect, asyncHandler(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 6)
-    return res.status(400).json({ message: 'New password must be at least 6 characters' });
-
-  const user = await User.findById(req.user._id).select('+password');
-  if (user.password) {
-    const ok = await user.matchPassword(currentPassword);
-    if (!ok) return res.status(401).json({ message: 'Current password is incorrect' });
-  }
-  user.password = newPassword;
-  await user.save();
-  res.json({ message: 'Password updated successfully' });
-}));

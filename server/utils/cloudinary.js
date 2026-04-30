@@ -1,4 +1,3 @@
-// server/utils/cloudinary.js  ← NEW FILE
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 

@@ -1,31 +1,26 @@
-import axios from 'axios';
+import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  withCredentials: true,
-});
+})
 
-// Attach JWT from localStorage on every request
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(config => {
   try {
-    const user = JSON.parse(localStorage.getItem('shopzone_user'));
-    if (user?.token) config.headers.Authorization = `Bearer ${user.token}`;
-  } catch { /* no user stored */ }
-  return config;
-});
+    const user = JSON.parse(localStorage.getItem('shopzone_user') || 'null')
+    if (user?.token) config.headers.Authorization = `Bearer ${user.token}`
+  } catch {}
+  return config
+})
 
-// Global response error handling
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
+  res => res,
+  err => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('shopzone_user');
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
-      }
+      localStorage.removeItem('shopzone_user')
+      window.location.href = '/login'
     }
-    return Promise.reject(err);
+    return Promise.reject(err)
   }
-);
+)
 
-export default api;
+export default api

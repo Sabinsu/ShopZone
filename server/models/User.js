@@ -11,7 +11,7 @@ const notificationSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   name:     { type: String, required: true, trim: true },
   email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, minlength: 6 },
+  password: { type: String, minlength: 6 },          // optional for OAuth users
   phone:    { type: String, default: '' },
   address: {
     street:  { type: String, default: '' },
@@ -20,34 +20,34 @@ const userSchema = new mongoose.Schema({
     country: { type: String, default: '' },
     zip:     { type: String, default: '' },
   },
-  avatar: { type: String, default: '' },
+  avatar:   { type: String, default: '' },
 
-  // ── Roles ──
-  role: { type: String, enum: ['user', 'seller', 'admin'], default: 'user' },
+  // ── Roles: 'user' | 'seller' | 'admin' ──
+  role:     { type: String, enum: ['user', 'seller', 'admin'], default: 'user' },
 
-  // ── Seller info ──
+  // ── Seller info (only when role === 'seller') ──
   sellerInfo: {
     storeName:   { type: String, default: '' },
     description: { type: String, default: '' },
-    approved:    { type: Boolean, default: false },
-    totalSales:  { type: Number, default: 0 },
+    approved:    { type: Boolean, default: false },  // admin must approve sellers
+    totalSales:  { type: Number,  default: 0 },
   },
 
   // ── OAuth ──
   googleId: { type: String, default: '' },
 
-  // ── AI recommendation data ──
-  searchHistory:  [{ type: String }],
+  // ── Behaviour (for AI recommendations) ──
+  searchHistory: [{ type: String }],
   viewedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   wishlist:       [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
 
   // ── Notifications ──
   notifications: [notificationSchema],
 
-  // ── Account ──
-  isActive:    { type: Boolean, default: true },
-  resetToken:  { type: String },
-  resetExpire: { type: Date },
+  // ── Account status ──
+  isActive:   { type: Boolean, default: true },
+  resetToken: { type: String },
+  resetExpire:{ type: Date },
 }, { timestamps: true });
 
 // Hash password before save
@@ -63,9 +63,10 @@ userSchema.methods.matchPassword = async function (entered) {
   return bcrypt.compare(entered, this.password);
 };
 
+// Push a notification helper
 userSchema.methods.pushNotification = async function (message, type = 'system', link = '') {
   this.notifications.unshift({ message, type, link });
-  if (this.notifications.length > 50) this.notifications.pop();
+  if (this.notifications.length > 50) this.notifications.pop(); // keep last 50
   return this.save();
 };
 

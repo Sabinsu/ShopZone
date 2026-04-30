@@ -1,4 +1,3 @@
-// server/middleware/rateLimiter.js  ← NEW FILE
 const rateLimit = require('express-rate-limit');
 
 // General API limiter

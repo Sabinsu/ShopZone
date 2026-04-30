@@ -1,49 +1,51 @@
-import { Link } from 'react-router-dom';
-import { FiShoppingBag, FiUsers, FiGlobe, FiAward } from 'react-icons/fi';
+import FounderSection from '../components/FounderSection'
+import { FiShoppingBag, FiUsers, FiPackage, FiGlobe } from 'react-icons/fi'
+
+const STATS = [
+  { icon: FiUsers,      value: '10,000+', label: 'Happy Customers' },
+  { icon: FiPackage,    value: '50,000+', label: 'Products Listed' },
+  { icon: FiShoppingBag,value: '500+',    label: 'Verified Sellers' },
+  { icon: FiGlobe,      value: '20+',     label: 'Cities Served' },
+]
 
 export default function AboutPage() {
-  const stats = [
-    { icon: FiUsers,       value: '50K+',  label: 'Happy Customers' },
-    { icon: FiShoppingBag, value: '10K+',  label: 'Products Listed' },
-    { icon: FiGlobe,       value: '120+',  label: 'Countries Served' },
-    { icon: FiAward,       value: '500+',  label: 'Trusted Sellers' },
-  ];
-
   return (
-    <div className="bg-white">
+    <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-orange-50 to-white py-16 px-4 text-center">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-4">About ShopZone</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto text-lg leading-relaxed">
-          ShopZone is a next-generation multi-vendor marketplace combining powerful AI tools with an intuitive shopping experience. We connect sellers and buyers worldwide.
+      <section className="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-16 px-4 text-center">
+        <h1 className="text-4xl font-bold mb-3">About ShopZone</h1>
+        <p className="text-gray-400 max-w-xl mx-auto text-lg">
+          Nepal's first AI-powered multi-vendor eCommerce platform — built to empower local sellers and delight shoppers.
         </p>
       </section>
 
       {/* Stats */}
-      <section className="max-w-5xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-4 gap-6">
-        {stats.map(({ icon: Icon, value, label }) => (
-          <div key={label} className="text-center">
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Icon size={22} className="text-orange-500"/>
+      <section className="py-12 bg-white">
+        <div className="max-w-4xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {STATS.map(s => (
+            <div key={s.label}>
+              <s.icon className="text-orange-500 text-2xl mx-auto mb-2" />
+              <p className="text-3xl font-bold text-gray-900">{s.value}</p>
+              <p className="text-gray-500 text-sm mt-1">{s.label}</p>
             </div>
-            <p className="text-3xl font-extrabold text-gray-900">{value}</p>
-            <p className="text-sm text-gray-500 mt-1">{label}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
-      {/* Mission */}
-      <section className="bg-gray-50 py-16 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
-          <p className="text-gray-600 leading-relaxed mb-6">
-            We believe commerce should empower everyone — from solo entrepreneurs to enterprise brands. ShopZone provides the tools, reach, and technology to help every seller succeed and every shopper find exactly what they love.
+      {/* Founders */}
+      <FounderSection />
+
+      {/* Story */}
+      <section className="py-16 bg-white">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Story</h2>
+          <p className="text-gray-500 leading-relaxed">
+            ShopZone was born in Kathmandu in 2024, when two developers realized local sellers had no easy way to reach 
+            customers online. Starting with just 10 sellers and 200 products, we've grown into a platform that serves 
+            thousands of buyers every day — powered by AI and driven by community.
           </p>
-          <Link to="/become-seller" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-full inline-flex items-center gap-2 transition-colors">
-            Join as a Seller
-          </Link>
         </div>
       </section>
     </div>
-  );
+  )
 }

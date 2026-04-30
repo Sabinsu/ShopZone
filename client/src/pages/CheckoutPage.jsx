@@ -1,340 +1,302 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { FiLock, FiChevronRight, FiCheckCircle, FiTruck, FiPackage } from 'react-icons/fi';
-import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
-import toast from 'react-hot-toast';
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { FiShoppingBag, FiMapPin, FiCreditCard, FiTruck, FiCheck, FiArrowLeft, FiLock } from 'react-icons/fi'
+import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
+import { useTracker } from '../hooks/useTracker'
+import api  from '../api/axios'
+import toast from 'react-hot-toast'
 
-const INITIAL_ADDR = { fullName:'', address:'', city:'', state:'', country:'', zip:'', phone:'' };
-
-const ORDER_FLOW = [
-  { step:1, icon:FiPackage,  label:'Cart'     },
-  { step:2, icon:FiTruck,    label:'Shipping'  },
-  { step:3, icon:FiLock,     label:'Payment'   },
-  { step:4, icon:FiCheckCircle, label:'Confirm' },
-];
+const STEPS = ['Cart Review', 'Shipping', 'Payment', 'Confirmation']
 
 export default function CheckoutPage() {
-  const { cart, cartSubtotal, clearCart } = useCart();
-  const { user } = useAuth();
-  const navigate = useNavigate();
+  const { cartItems, clearCart, cartTotal } = useCart()
+  const { user } = useAuth()
+  const { track } = useTracker()
+  const navigate   = useNavigate()
 
-  const [step,    setStep]    = useState(1);
-  const [addr,    setAddr]    = useState({ ...INITIAL_ADDR, fullName: user?.name || '' });
-  const [method,  setMethod]  = useState('cod');
-  const [loading, setLoading] = useState(false);
-  const [placed,  setPlaced]  = useState(null); // placed order
+  const [step,     setStep]     = useState(0)
+  const [loading,  setLoading]  = useState(false)
+  const [orderId,  setOrderId]  = useState(null)
 
-  const shipping = cartSubtotal >= 50 ? 0 : 5.99;
-  const tax      = +(cartSubtotal * 0.08).toFixed(2);
-  const total    = +(cartSubtotal + shipping + tax).toFixed(2);
+  const [shipping, setShipping] = useState({
+    name:    user?.name    || '',
+    email:   user?.email   || '',
+    phone:   user?.phone   || '',
+    address: user?.address?.street  || '',
+    city:    user?.address?.city    || '',
+    state:   user?.address?.state   || '',
+    country: user?.address?.country || 'Nepal',
+    zip:     user?.address?.zip     || '',
+  })
 
-  const handleAddrChange = e => setAddr(a => ({ ...a, [e.target.name]: e.target.value }));
+  const [payment, setPayment] = useState({
+    method: 'cod',   // 'cod' | 'stripe'
+  })
 
-  const handleOrder = async () => {
-    setLoading(true);
+  const shippingFee = cartTotal > 50 ? 0 : 5
+  const tax         = +(cartTotal * 0.13).toFixed(2)   // 13% VAT (Nepal)
+  const grandTotal  = +(cartTotal + shippingFee + tax).toFixed(2)
+
+  if (cartItems.length === 0 && !orderId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-center px-4">
+        <div>
+          <FiShoppingBag size={56} className="mx-auto text-gray-300 mb-4"/>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">Your cart is empty</h2>
+          <Link to="/products" className="text-orange-500 underline">Continue shopping</Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step validators ───────────────────────────────────────────────────────
+  const validateShipping = () => {
+    const { name, email, phone, address, city, country } = shipping
+    if (!name || !email || !phone || !address || !city || !country) {
+      toast.error('Please fill all required fields')
+      return false
+    }
+    return true
+  }
+
+  // ── Place order ───────────────────────────────────────────────────────────
+  const placeOrder = async () => {
+    setLoading(true)
     try {
-      const items = cart.map(i => ({
-        product:  i._id,
-        name:     i.name,
-        image:    i.images?.[0] || '',
-        price:    i.price,
-        quantity: i.quantity,
-      }));
-
-      const { data: order } = await api.post('/orders', {
-        items,
-        shippingAddress: addr,
-        paymentMethod:   method,   // 'cod'
-        itemsPrice:      +cartSubtotal.toFixed(2),
+      const orderData = {
+        items: cartItems.map(item => ({
+          product:  item._id,
+          name:     item.name,
+          price:    item.price,
+          image:    item.images?.[0] || '',
+          qty:      item.qty,
+          category: item.category || '',
+        })),
+        shippingAddress: shipping,
+        paymentMethod:   payment.method,
+        itemsPrice:      cartTotal,
+        shippingPrice:   shippingFee,
         taxPrice:        tax,
-        shippingPrice:   +shipping.toFixed(2),
-        totalPrice:      total,
-      });
+        totalPrice:      grandTotal,
+      }
 
-      clearCart();
-      setPlaced(order);
-      setStep(4);
+      const { data } = await api.post('/orders', orderData)
+      setOrderId(data._id)
+
+      // Track purchase activity for every item
+      for (const item of cartItems) {
+        track('purchase', { productId: item._id, category: item.category || '' })
+      }
+
+      clearCart()
+      setStep(3)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Order failed. Please try again.');
-    } finally { setLoading(false); }
-  };
+      toast.error(err.response?.data?.message || 'Failed to place order')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  if (cart.length === 0 && !placed) { navigate('/cart'); return null; }
-
-  const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-white transition-colors";
-  const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
-
-  return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Checkout</h1>
-
-      {/* Progress steps */}
-      <div className="flex items-center mb-8 overflow-x-auto">
-        {ORDER_FLOW.map(({ step: s, icon: Icon, label }, i) => (
-          <div key={s} className="flex items-center flex-1 min-w-0">
-            <div className="flex flex-col items-center">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                step > s ? 'bg-green-500 text-white' : step === s ? 'bg-orange-500 text-white ring-4 ring-orange-100' : 'bg-gray-100 text-gray-400'
-              }`}>
-                {step > s ? <FiCheckCircle size={16}/> : <Icon size={16}/>}
-              </div>
-              <span className={`text-xs mt-1 font-medium ${step>=s ? 'text-gray-700' : 'text-gray-400'}`}>{label}</span>
+  // ── Step 0: Cart Review ───────────────────────────────────────────────────
+  const CartReview = () => (
+    <div className="space-y-4">
+      <h2 className="font-semibold text-gray-900 mb-4">Review Your Cart ({cartItems.length} items)</h2>
+      {cartItems.map(item => (
+        <div key={item._id} className="flex gap-4 py-3 border-b border-gray-50 last:border-0">
+          <img src={item.images?.[0] || 'https://via.placeholder.com/80'} alt={item.name}
+            className="w-16 h-16 rounded-xl object-cover border border-gray-100"/>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-800 text-sm line-clamp-2">{item.name}</p>
+            <p className="text-xs text-gray-400 capitalize mt-0.5">{item.category}</p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-gray-500">Qty: {item.qty}</span>
+              <span className="font-bold text-gray-900">${(item.price * item.qty).toFixed(2)}</span>
             </div>
-            {i < ORDER_FLOW.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 rounded transition-colors ${step > s ? 'bg-green-400' : 'bg-gray-200'}`}/>
-            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  // ── Step 1: Shipping ──────────────────────────────────────────────────────
+  const ShippingForm = () => (
+    <div>
+      <h2 className="font-semibold text-gray-900 mb-5">Shipping Address</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[
+          { key:'name',    label:'Full Name *',    type:'text',  placeholder:'Sabin Subedi' },
+          { key:'email',   label:'Email *',        type:'email', placeholder:'you@email.com' },
+          { key:'phone',   label:'Phone *',        type:'tel',   placeholder:'+977 9800000000' },
+          { key:'address', label:'Street Address *',type:'text', placeholder:'123 Durbar Marg', span: true },
+          { key:'city',    label:'City *',         type:'text',  placeholder:'Kathmandu' },
+          { key:'state',   label:'State / Province',type:'text', placeholder:'Bagmati' },
+          { key:'country', label:'Country *',      type:'text',  placeholder:'Nepal' },
+          { key:'zip',     label:'ZIP / Post Code', type:'text', placeholder:'44600' },
+        ].map(({ key, label, type, placeholder, span }) => (
+          <div key={key} className={span ? 'sm:col-span-2' : ''}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <input
+              type={type}
+              value={shipping[key]}
+              onChange={e => setShipping(s => ({ ...s, [key]: e.target.value }))}
+              placeholder={placeholder}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
+            />
           </div>
         ))}
       </div>
+    </div>
+  )
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-
-          {/* STEP 1: Shipping */}
-          {step === 1 && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-              <h2 className="font-bold text-gray-900 text-lg mb-5 flex items-center gap-2">
-                <FiTruck className="text-orange-500" size={20}/> Shipping Address
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className={labelCls}>Full Name *</label>
-                  <input name="fullName" value={addr.fullName} onChange={handleAddrChange} className={inputCls} placeholder="Jane Doe" required/>
-                </div>
-                <div className="col-span-2">
-                  <label className={labelCls}>Street Address *</label>
-                  <input name="address" value={addr.address} onChange={handleAddrChange} className={inputCls} placeholder="123 Main St, Apt 4B" required/>
-                </div>
-                <div>
-                  <label className={labelCls}>City *</label>
-                  <input name="city" value={addr.city} onChange={handleAddrChange} className={inputCls} placeholder="Kathmandu" required/>
-                </div>
-                <div>
-                  <label className={labelCls}>State / Province</label>
-                  <input name="state" value={addr.state} onChange={handleAddrChange} className={inputCls} placeholder="Bagmati"/>
-                </div>
-                <div>
-                  <label className={labelCls}>Country *</label>
-                  <input name="country" value={addr.country} onChange={handleAddrChange} className={inputCls} placeholder="Nepal" required/>
-                </div>
-                <div>
-                  <label className={labelCls}>ZIP / Postal Code *</label>
-                  <input name="zip" value={addr.zip} onChange={handleAddrChange} className={inputCls} placeholder="44600" required/>
-                </div>
-                <div className="col-span-2">
-                  <label className={labelCls}>Phone Number</label>
-                  <input name="phone" value={addr.phone} onChange={handleAddrChange} className={inputCls} placeholder="+977 9800000000"/>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  if (!addr.fullName||!addr.address||!addr.city||!addr.country||!addr.zip)
-                    return toast.error('Please fill all required fields');
-                  setStep(2);
-                }}
-                className="mt-6 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-200"
-              >
-                Continue to Payment <FiChevronRight size={16}/>
-              </button>
+  // ── Step 2: Payment ───────────────────────────────────────────────────────
+  const PaymentStep = () => (
+    <div>
+      <h2 className="font-semibold text-gray-900 mb-5">Payment Method</h2>
+      <div className="space-y-3 mb-6">
+        {/* COD */}
+        <label className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-colors ${
+          payment.method === 'cod' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+        }`}>
+          <input type="radio" name="payment" value="cod" checked={payment.method === 'cod'}
+            onChange={() => setPayment({ method: 'cod' })} className="accent-orange-500"/>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">💵</div>
+            <div>
+              <p className="font-semibold text-gray-900">Cash on Delivery</p>
+              <p className="text-xs text-gray-500">Pay when your order arrives</p>
             </div>
-          )}
+            <span className="ml-auto text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">FREE</span>
+          </div>
+        </label>
 
-          {/* STEP 2: Payment Method */}
-          {step === 2 && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-              <h2 className="font-bold text-gray-900 text-lg mb-5 flex items-center gap-2">
-                <FiLock className="text-orange-500" size={20}/> Payment Method
-              </h2>
-
-              <div className="space-y-3 mb-6">
-                {/* COD Option - Main option */}
-                <label className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${method==='cod' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                  <input type="radio" name="payment" value="cod" checked={method==='cod'} onChange={() => setMethod('cod')} className="accent-orange-500"/>
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl shrink-0">💵</div>
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-800">Cash on Delivery</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Pay cash when your order arrives. No advance payment required.</p>
-                  </div>
-                  {method==='cod' && <FiCheckCircle size={20} className="text-orange-500 shrink-0"/>}
-                </label>
-
-                {/* Stripe — coming soon */}
-                <div className="flex items-center gap-4 p-4 border-2 border-gray-100 rounded-2xl opacity-50 cursor-not-allowed">
-                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl shrink-0">💳</div>
-                  <div>
-                    <p className="font-bold text-gray-800">Credit / Debit Card</p>
-                    <p className="text-xs text-gray-400">Coming soon — Stripe integration</p>
-                  </div>
-                  <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">Soon</span>
-                </div>
-              </div>
-
-              {/* COD info box */}
-              {method === 'cod' && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 flex items-start gap-3">
-                  <FiCheckCircle size={18} className="text-green-600 mt-0.5 shrink-0"/>
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">Cash on Delivery Selected</p>
-                    <p className="text-xs text-green-700 mt-0.5">Your order will be placed immediately. Pay the delivery agent when your package arrives.</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-2 text-xs text-gray-500 mb-6">
-                <FiLock size={13} className="text-gray-400 shrink-0"/>
-                Your information is secure and encrypted. We never store sensitive payment data.
-              </div>
-
-              <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
-                  ← Back
-                </button>
-                <button onClick={() => setStep(3)}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-200">
-                  Review Order <FiChevronRight size={16}/>
-                </button>
-              </div>
+        {/* Card (Stripe — disabled in demo, easy to enable) */}
+        <label className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-colors opacity-50`}>
+          <input type="radio" name="payment" disabled className="accent-orange-500"/>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">💳</div>
+            <div>
+              <p className="font-semibold text-gray-900">Credit / Debit Card</p>
+              <p className="text-xs text-gray-500">Visa, Mastercard — Coming soon</p>
             </div>
-          )}
+          </div>
+        </label>
 
-          {/* STEP 3: Review + Confirm */}
-          {step === 3 && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-              <h2 className="font-bold text-gray-900 text-lg mb-5">Review Your Order</h2>
-
-              {/* Shipping summary */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Shipping To</p>
-                  <button onClick={() => setStep(1)} className="text-xs text-orange-500 font-medium hover:text-orange-600">Edit</button>
-                </div>
-                <p className="text-sm font-semibold text-gray-800">{addr.fullName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{addr.address}, {addr.city}, {addr.state} {addr.zip}, {addr.country}</p>
-                {addr.phone && <p className="text-xs text-gray-500">{addr.phone}</p>}
-              </div>
-
-              {/* Payment summary */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Payment Method</p>
-                  <button onClick={() => setStep(2)} className="text-xs text-orange-500 font-medium hover:text-orange-600">Edit</button>
-                </div>
-                <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                  💵 Cash on Delivery
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Pay on arrival</span>
-                </p>
-              </div>
-
-              {/* Items */}
-              <div className="space-y-3 mb-5 max-h-56 overflow-y-auto">
-                {cart.map(item => (
-                  <div key={item._id} className="flex items-center gap-3">
-                    <img src={item.images?.[0]||'https://via.placeholder.com/50'} alt={item.name}
-                      className="w-12 h-12 rounded-xl object-cover bg-gray-100 shrink-0"/>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-700 truncate">{item.name}</p>
-                      <p className="text-xs text-gray-400">×{item.quantity} · ${item.price?.toFixed(2)} each</p>
-                    </div>
-                    <span className="text-sm font-bold text-gray-800 shrink-0">${(item.price*item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-3">
-                <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
-                  ← Back
-                </button>
-                <button onClick={handleOrder} disabled={loading}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-200">
-                  {loading ? (
-                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Placing Order…</>
-                  ) : `Confirm Order · $${total}`}
-                </button>
-              </div>
+        {/* eSewa / Khalti (Nepal-specific, placeholder) */}
+        <label className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-colors opacity-50`}>
+          <input type="radio" name="payment" disabled className="accent-orange-500"/>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-xl">📱</div>
+            <div>
+              <p className="font-semibold text-gray-900">eSewa / Khalti</p>
+              <p className="text-xs text-gray-500">Digital wallets — Coming soon</p>
             </div>
-          )}
+          </div>
+        </label>
+      </div>
 
-          {/* STEP 4: Success */}
-          {step === 4 && placed && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
-                <FiCheckCircle size={40} className="text-green-500"/>
-              </div>
-              <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Order Placed! 🎉</h2>
-              <p className="text-gray-500 mb-2">Thank you for shopping with ShopZone!</p>
-              <p className="font-mono text-sm bg-gray-100 rounded-lg px-3 py-2 inline-block text-gray-700 mb-6">
-                Order #{placed._id?.slice(-8).toUpperCase()}
-              </p>
+      {/* Order summary */}
+      <div className="bg-gray-50 rounded-2xl p-4 space-y-2 text-sm">
+        <h3 className="font-semibold text-gray-900 mb-3">Order Summary</h3>
+        <div className="flex justify-between text-gray-600"><span>Subtotal ({cartItems.length} items)</span><span>${cartTotal.toFixed(2)}</span></div>
+        <div className="flex justify-between text-gray-600">
+          <span>Shipping</span>
+          <span className={shippingFee === 0 ? 'text-green-600 font-medium' : ''}>{shippingFee === 0 ? 'FREE' : `$${shippingFee.toFixed(2)}`}</span>
+        </div>
+        <div className="flex justify-between text-gray-600"><span>Tax (13% VAT)</span><span>${tax}</span></div>
+        <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-200">
+          <span>Total</span><span className="text-orange-600">${grandTotal}</span>
+        </div>
+      </div>
+    </div>
+  )
 
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-left">
-                <p className="text-sm font-semibold text-green-800 flex items-center gap-2">
-                  <FiTruck size={16}/> Cash on Delivery
-                </p>
-                <p className="text-xs text-green-700 mt-1">
-                  Your order is confirmed. Please keep <strong>${total}</strong> ready to pay the delivery agent when your package arrives.
-                </p>
-              </div>
+  // ── Step 3: Confirmation ──────────────────────────────────────────────────
+  const Confirmation = () => (
+    <div className="text-center py-8">
+      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <FiCheck size={40} className="text-green-500"/>
+      </div>
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Placed!</h2>
+      <p className="text-gray-500 mb-2">Thank you for your order, {shipping.name.split(' ')[0]}!</p>
+      <p className="text-sm text-gray-400 mb-1">Order ID: <span className="font-mono font-semibold text-gray-700">#{orderId?.slice(-8).toUpperCase()}</span></p>
+      <p className="text-sm text-gray-400 mb-6">
+        {payment.method === 'cod'
+          ? '💵 Cash on Delivery — pay when your order arrives'
+          : '💳 Payment confirmed'}
+      </p>
+      <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6 text-left max-w-sm mx-auto">
+        <p className="text-sm font-semibold text-gray-800 mb-1">Delivering to:</p>
+        <p className="text-sm text-gray-600">{shipping.address}, {shipping.city}</p>
+        <p className="text-sm text-gray-600">{shipping.country} {shipping.zip}</p>
+        <p className="text-sm text-gray-500 mt-1">{shipping.phone}</p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Link to="/orders" className="bg-orange-500 text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-orange-600 transition-colors inline-flex items-center justify-center gap-2">
+          <FiTruck size={16}/> Track Order
+        </Link>
+        <Link to="/products" className="border-2 border-gray-200 text-gray-700 font-semibold px-6 py-2.5 rounded-xl hover:border-gray-300 transition-colors inline-flex items-center justify-center gap-2">
+          Continue Shopping
+        </Link>
+      </div>
+    </div>
+  )
 
-              <div className="flex gap-3">
-                <Link to={`/orders/${placed._id}`} className="flex-1 text-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
-                  Track Order
-                </Link>
-                <Link to="/products" className="flex-1 text-center border-2 border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold py-3 rounded-xl transition-colors text-sm">
-                  Continue Shopping
-                </Link>
+  const stepContent = [<CartReview/>, <ShippingForm/>, <PaymentStep/>, <Confirmation/>]
+
+  const handleNext = () => {
+    if (step === 0) { setStep(1); return }
+    if (step === 1) { if (validateShipping()) setStep(2); return }
+    if (step === 2) { placeOrder(); return }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Progress steps */}
+        {step < 3 && (
+          <div className="flex items-center justify-center mb-8 gap-2">
+            {STEPS.slice(0,3).map((s, i) => (
+              <div key={s} className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  i < step ? 'bg-green-500 text-white' : i === step ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {i < step ? <FiCheck size={14}/> : i + 1}
+                </div>
+                <span className={`text-sm hidden sm:inline ${i === step ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>{s}</span>
+                {i < 2 && <div className={`w-8 h-0.5 ${i < step ? 'bg-green-500' : 'bg-gray-200'}`}/>}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        )}
+
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+          {stepContent[step]}
         </div>
 
-        {/* Order Summary sidebar */}
-        {step < 4 && (
-          <div>
-            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm sticky top-24">
-              <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
-              <div className="space-y-3 mb-4 max-h-52 overflow-y-auto">
-                {cart.map(item => (
-                  <div key={item._id} className="flex gap-3 items-center">
-                    <div className="relative shrink-0">
-                      <img src={item.images?.[0]||'https://via.placeholder.com/40'} alt={item.name}
-                        className="w-11 h-11 rounded-xl object-cover bg-gray-100"/>
-                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                        {item.quantity}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-700 line-clamp-1">{item.name}</p>
-                      <p className="text-xs text-gray-400">${item.price?.toFixed(2)}</p>
-                    </div>
-                    <span className="text-xs font-bold text-gray-800 shrink-0">${(item.price*item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-gray-100 pt-3 space-y-2 text-sm">
-                <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>${cartSubtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between text-gray-500">
-                  <span>Shipping</span>
-                  <span className={shipping===0 ? 'text-green-600 font-medium' : ''}>{shipping===0 ? 'FREE' : `$${shipping.toFixed(2)}`}</span>
-                </div>
-                <div className="flex justify-between text-gray-500"><span>Tax (8%)</span><span>${tax}</span></div>
-                {cartSubtotal < 50 && cartSubtotal > 0 && (
-                  <p className="text-xs text-orange-500 bg-orange-50 rounded-lg px-3 py-2">
-                    Add ${(50-cartSubtotal).toFixed(2)} more for free shipping!
-                  </p>
-                )}
-                <div className="flex justify-between font-bold text-gray-900 text-base border-t border-gray-100 pt-2">
-                  <span>Total</span><span>${total}</span>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">
-                <FiLock size={12}/> Secure & encrypted checkout
-              </div>
-            </div>
+        {/* Navigation */}
+        {step < 3 && (
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => step > 0 ? setStep(s => s-1) : null}
+              disabled={step === 0}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-0 transition-colors"
+            >
+              <FiArrowLeft size={14}/> Back
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={loading}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 transition-colors shadow-lg shadow-orange-200"
+            >
+              {loading ? 'Placing order...' :
+               step === 2 ? <><FiLock size={14}/> Place Order — ${grandTotal}</> :
+               'Continue →'}
+            </button>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

@@ -1,4 +1,3 @@
-// server/jobs/importProducts.js  ← NEW FILE
 // Automatically imports products from free public APIs.
 // Scheduled via node-cron (runs every 6 hours in production).
 //
