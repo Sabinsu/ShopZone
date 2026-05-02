@@ -1,7 +1,7 @@
 // client/src/pages/seller/BecomeSeller.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiStore, FiCheckCircle } from 'react-icons/fi'
+import { FiShoppingBag, FiCheckCircle } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -62,7 +62,7 @@ export default function BecomeSeller() {
 
       <div className="card">
         <h2 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-          <FiStore className="text-orange-500" /> Seller Application
+          <FiShoppingBag className="text-orange-500" /> Seller Application
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
