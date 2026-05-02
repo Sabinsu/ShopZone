@@ -1,21 +1,38 @@
+// client/src/context/AuthContext.jsx  ← REPLACE existing file
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
 
 const AuthContext = createContext(null)
 
-export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(() => {
-    try { return JSON.parse(localStorage.getItem('shopzone_user')) } catch { return null }
-  })
-  const [loading, setLoading] = useState(false)
+const readUser = () => {
+  try { return JSON.parse(localStorage.getItem('shopzone_user')) } catch { return null }
+}
 
-  // ── Persist user to localStorage ─────────────────────────────────────────
+export function AuthProvider({ children }) {
+  const [user,    setUser]    = useState(readUser)
+  const [loading, setLoading] = useState(true)  // true during initial auto-login check
+
+  // ── Persist user to localStorage on every change ─────────────────────────
   useEffect(() => {
     if (user) localStorage.setItem('shopzone_user', JSON.stringify(user))
     else      localStorage.removeItem('shopzone_user')
   }, [user])
 
-  // ── Auth helpers ──────────────────────────────────────────────────────────
+  // ── Auto-login: verify stored token on mount ──────────────────────────────
+  useEffect(() => {
+    const stored = readUser()
+    if (!stored?.token) { setLoading(false); return }
+
+    api.get('/auth/profile')
+      .then(({ data }) => setUser(prev => ({ ...prev, ...data })))
+      .catch(() => {
+        // Token invalid/expired — log out silently
+        setUser(null)
+      })
+      .finally(() => setLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auth actions ──────────────────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password })
     setUser(data)
@@ -47,7 +64,10 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get('/auth/profile')
       setUser(prev => ({ ...prev, ...data }))
-    } catch { logout() }
+      return data
+    } catch {
+      logout()
+    }
   }, [logout])
 
   // ── Role helpers ──────────────────────────────────────────────────────────
@@ -62,7 +82,7 @@ export function AuthProvider({ children }) {
     await api.put('/auth/notifications/read')
     setUser(prev => ({
       ...prev,
-      notifications: prev.notifications?.map(n => ({ ...n, read: true })) ?? [],
+      notifications: prev?.notifications?.map(n => ({ ...n, read: true })) ?? [],
     }))
   }, [])
 
@@ -89,4 +109,8 @@ export function AuthProvider({ children }) {
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
+}

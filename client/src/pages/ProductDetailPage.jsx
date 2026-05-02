@@ -1,314 +1,328 @@
-// Key additions vs original:
-//   1. Tracks 'view' on mount
-//   2. Related Products section (RecommendationSection type="related")
-//   3. Collaborative "Customers also bought" section
-//   4. Review section is already there — preserved
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { FiStar, FiShoppingCart, FiHeart, FiMinus, FiPlus, FiArrowLeft, FiShare2, FiTruck, FiShield } from 'react-icons/fi'
-import { useCart }    from '../context/CartContext'
-import { useAuth }    from '../context/AuthContext'
-import { useTracker } from '../hooks/useTracker'
-import RecommendationSection from '../components/product/RecommendationSection'
-import api  from '../api/axios'
+// client/src/pages/ProductDetailPage.jsx  ← REPLACE
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { FiShoppingCart, FiHeart, FiStar, FiTruck, FiShield, FiShare2, FiMinus, FiPlus } from 'react-icons/fi'
+import api from '../api/axios'
+import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
+import { SkeletonProductDetail } from '../components/ui/Skeleton'
+import ProductCard from '../components/ProductCard'
 import toast from 'react-hot-toast'
 
 export default function ProductDetailPage() {
-  const { id }        = useParams()
-  const navigate      = useNavigate()
+  const { id } = useParams()
+  const navigate = useNavigate()
   const { addToCart } = useCart()
-  const { user, isUser } = useAuth()
-  const { track }     = useTracker()
+  const { user } = useAuth()
 
   const [product,  setProduct]  = useState(null)
+  const [related,  setRelated]  = useState([])
+  const [reviews,  setReviews]  = useState([])
   const [loading,  setLoading]  = useState(true)
-  const [qty,      setQty]      = useState(1)
-  const [selImg,   setSelImg]   = useState(0)
-  const [review,   setReview]   = useState({ rating: 5, comment: '' })
-  const [submitting, setSubmitting] = useState(false)
-  const [wishlist, setWishlist] = useState(false)
+  const [activeImg, setActiveImg] = useState(0)
+  const [qty,       setQty]       = useState(1)
+  const [tab,       setTab]       = useState('desc')
+  const [zoom,      setZoom]      = useState(false)
+
+  // Review form
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' })
+  const [submitting,  setSubmitting] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
-    api.get(`/products/${id}`)
-      .then(r => {
-        setProduct(r.data)
+    const load = async () => {
+      setLoading(true)
+      try {
+        const [pRes, revRes] = await Promise.all([
+          api.get(`/products/${id}`),
+          api.get(`/reviews/product/${id}`),
+        ])
+        setProduct(pRes.data)
+        setReviews(revRes.data)
         // Track view for recommendations
-        track('view', { productId: r.data._id, category: r.data.category })
-      })
-      .catch(() => navigate('/products'))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  if (loading) return (
-    <div className="max-w-6xl mx-auto px-4 py-8 animate-pulse">
-      <div className="grid md:grid-cols-2 gap-10">
-        <div className="aspect-square bg-gray-200 rounded-2xl"/>
-        <div className="space-y-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-5 bg-gray-200 rounded"/>)}
-        </div>
-      </div>
-    </div>
-  )
-  if (!product) return null
-
-  const images  = product.images?.length ? product.images : ['https://via.placeholder.com/400']
-  const inStock = product.stock > 0
-  const disc    = product.comparePrice > product.price
-    ? Math.round((1-product.price/product.comparePrice)*100) : 0
+        if (user?._id) api.post(`/recommendations/track`, { userId: user._id, productId: id, action: 'view' }).catch(()=>{})
+        // Related products
+        const relRes = await api.get(`/products?category=${encodeURIComponent(pRes.data.category)}&limit=6`)
+        setRelated((relRes.data.products || relRes.data).filter(p => p._id !== id))
+      } catch (e) { console.error(e) }
+      finally { setLoading(false) }
+    }
+    load()
+  }, [id, user?._id])
 
   const handleAddToCart = () => {
-    for (let i = 0; i < qty; i++) addToCart(product)
-    toast.success(`${product.name} added to cart!`)
-    track('cart', { productId: product._id, category: product.category })
+    addToCart(product, qty)
+    toast.success(`${qty}x ${product.name} added to cart!`, { icon: '🛒' })
   }
 
-  const handleWishlist = async () => {
-    if (!isUser) return toast.error('Login to add to wishlist')
-    try {
-      const { data } = await api.post(`/auth/wishlist/${product._id}`)
-      setWishlist(data.added)
-      toast.success(data.added ? 'Added to wishlist' : 'Removed from wishlist')
-      if (data.added) track('wishlist', { productId: product._id, category: product.category })
-    } catch { toast.error('Failed to update wishlist') }
+  const handleBuyNow = () => {
+    addToCart(product, qty)
+    navigate('/checkout')
   }
 
-  const handleReview = async (e) => {
+  const handleReviewSubmit = async (e) => {
     e.preventDefault()
-    if (!review.comment.trim()) return toast.error('Please write a comment')
+    if (!user) { toast.error('Please login to review'); return }
     setSubmitting(true)
     try {
-      await api.post(`/products/${product._id}/reviews`, review)
+      const { data } = await api.post(`/reviews/${id}`, reviewForm)
+      setReviews(prev => [data, ...prev])
+      setReviewForm({ rating: 5, comment: '' })
       toast.success('Review submitted!')
-      const { data } = await api.get(`/products/${product._id}`)
-      setProduct(data)
-      setReview({ rating: 5, comment: '' })
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Review failed')
+      toast.error(err.response?.data?.message || 'Failed to submit review')
     } finally { setSubmitting(false) }
   }
 
-  const alreadyReviewed = isUser && product.reviews?.some(r => r.user?._id === user?._id || r.user === user?._id)
+  if (loading) return <SkeletonProductDetail />
+  if (!product) return <div className="text-center py-20 text-gray-500">Product not found</div>
+
+  const discount = product.comparePrice > product.price
+    ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
+    : 0
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <button onClick={() => navigate(-1)} className="hover:text-orange-500 flex items-center gap-1">
-            <FiArrowLeft size={14}/> Back
-          </button>
-          <span>/</span>
-          <Link to="/products" className="hover:text-orange-500">Products</Link>
-          <span>/</span>
-          <Link to={`/products?category=${product.category}`} className="hover:text-orange-500 capitalize">{product.category}</Link>
-          <span>/</span>
-          <span className="text-gray-700 line-clamp-1">{product.name}</span>
-        </nav>
+    <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
 
-        {/* Main grid */}
-        <div className="grid md:grid-cols-2 gap-10 mb-12">
-          {/* Images */}
-          <div>
-            <div className="bg-gray-50 rounded-2xl overflow-hidden aspect-square mb-3">
-              <img src={images[selImg]} alt={product.name}
-                className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"/>
-            </div>
-            {images.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
-                {images.map((img, i) => (
-                  <button key={i} onClick={() => setSelImg(i)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${selImg===i?'border-orange-500':'border-gray-200'}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover"/>
-                  </button>
-                ))}
-              </div>
+      {/* Breadcrumb */}
+      <nav className="text-xs text-gray-400 mb-6 flex gap-1">
+        <a href="/" className="hover:text-orange-500">Home</a> /
+        <a href="/products" className="hover:text-orange-500">Products</a> /
+        <a href={`/products?category=${product.category}`} className="hover:text-orange-500">{product.category}</a> /
+        <span className="text-gray-600 truncate max-w-[200px]">{product.name}</span>
+      </nav>
+
+      <div className="grid md:grid-cols-2 gap-10 mb-12">
+
+        {/* Images */}
+        <div>
+          <div
+            className="relative overflow-hidden rounded-2xl bg-gray-50 aspect-square cursor-zoom-in mb-3"
+            onClick={() => setZoom(!zoom)}
+          >
+            <img
+              src={product.images?.[activeImg] || '/placeholder.png'}
+              alt={product.name}
+              className={`w-full h-full object-cover transition-transform duration-300 ${zoom ? 'scale-150' : 'scale-100'}`}
+            />
+            {discount > 0 && (
+              <span className="absolute top-3 left-3 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+                -{discount}%
+              </span>
             )}
           </div>
-
-          {/* Info */}
-          <div>
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium capitalize">
-                  {product.category}
-                </span>
-                {product.brand && <span className="text-xs text-gray-400 ml-2">{product.brand}</span>}
-              </div>
-              <button onClick={handleWishlist}
-                className={`p-2 rounded-full border transition-colors ${wishlist?'bg-red-50 border-red-300 text-red-500':'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400'}`}>
-                <FiHeart size={18} className={wishlist?'fill-red-500':''}/>
-              </button>
-            </div>
-
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">{product.name}</h1>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <FiStar key={i} size={16} className={i < Math.round(product.ratings) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}/>
-                ))}
-              </div>
-              <span className="text-sm text-gray-600">{product.ratings?.toFixed(1)} ({product.numReviews} reviews)</span>
-              {product.sold > 0 && <span className="text-xs text-gray-400">{product.sold} sold</span>}
-            </div>
-
-            <div className="flex items-end gap-3 mb-5">
-              <span className="text-3xl font-extrabold text-gray-900">${product.price?.toFixed(2)}</span>
-              {disc > 0 && (
-                <>
-                  <span className="text-lg text-gray-400 line-through">${product.comparePrice?.toFixed(2)}</span>
-                  <span className="bg-red-500 text-white text-sm font-bold px-2 py-0.5 rounded-full">-{disc}% OFF</span>
-                </>
-              )}
-            </div>
-
-            <p className="text-gray-600 leading-relaxed mb-6">{product.description}</p>
-
-            {/* Stock */}
-            <div className="mb-5">
-              {inStock ? (
-                <span className="text-green-600 text-sm font-medium flex items-center gap-1">
-                  ✅ In stock ({product.stock} available)
-                </span>
-              ) : (
-                <span className="text-red-500 text-sm font-medium">❌ Out of stock</span>
-              )}
-            </div>
-
-            {/* Qty + Add to Cart */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-                <button onClick={() => setQty(q => Math.max(1, q-1))}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                  <FiMinus size={14}/>
+          {product.images?.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {product.images.map((img, i) => (
+                <button key={i} onClick={() => setActiveImg(i)}
+                  className={`w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                    i === activeImg ? 'border-orange-500' : 'border-transparent'
+                  }`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
-                <span className="w-10 h-10 flex items-center justify-center font-semibold text-gray-900">{qty}</span>
-                <button onClick={() => setQty(q => Math.min(product.stock, q+1))}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors" disabled={!inStock}>
-                  <FiPlus size={14}/>
-                </button>
-              </div>
-              <button onClick={handleAddToCart} disabled={!inStock}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 transition-colors">
-                <FiShoppingCart size={17}/> Add to Cart
-              </button>
-            </div>
-
-            {/* Trust */}
-            <div className="grid grid-cols-2 gap-3 text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
-              <div className="flex items-center gap-2"><FiTruck className="text-orange-400"/><span>Free shipping over $50</span></div>
-              <div className="flex items-center gap-2"><FiShield className="text-orange-400"/><span>30-day returns</span></div>
-            </div>
-
-            {/* Seller info */}
-            {product.seller && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-200 rounded-full flex items-center justify-center text-blue-700 text-sm font-bold">
-                  {product.seller.name?.[0]?.toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Sold by</p>
-                  <p className="text-sm font-semibold text-gray-800">
-                    {product.seller.sellerInfo?.storeName || product.seller.name}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Related Products ── */}
-        <RecommendationSection
-          type="related"
-          productId={product._id}
-          label="Similar Products"
-          limit={6}
-          cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-        />
-
-        {/* ── Collaborative ── */}
-        <RecommendationSection
-          type="collaborative"
-          productId={product._id}
-          label="Customers Also Bought"
-          limit={6}
-          cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-        />
-
-        {/* ── Reviews ── */}
-        <div className="mt-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
-            Customer Reviews ({product.numReviews || 0})
-          </h2>
-
-          {product.reviews?.length > 0 && (
-            <div className="space-y-4 mb-8">
-              {product.reviews.map(r => (
-                <div key={r._id} className="bg-gray-50 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 text-sm font-bold">
-                        {r.name?.[0]?.toUpperCase()}
-                      </div>
-                      <span className="font-semibold text-gray-800 text-sm">{r.name}</span>
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <FiStar key={i} size={12} className={i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}/>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-gray-600 text-sm">{r.comment}</p>
-                  <p className="text-xs text-gray-400 mt-2">{new Date(r.createdAt).toLocaleDateString()}</p>
-                </div>
               ))}
             </div>
           )}
+        </div>
 
-          {/* Write review */}
-          {isUser && !alreadyReviewed ? (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-900 mb-4">Write a Review</h3>
-              <form onSubmit={handleReview} className="space-y-4">
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">Rating</label>
-                  <div className="flex gap-1">
-                    {[1,2,3,4,5].map(n => (
-                      <button key={n} type="button" onClick={() => setReview(r => ({ ...r, rating: n }))}>
-                        <FiStar size={24} className={n <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-yellow-200'}/>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Your Review</label>
-                  <textarea
-                    value={review.comment}
-                    onChange={e => setReview(r => ({ ...r, comment: e.target.value }))}
-                    rows={4}
-                    placeholder="Share your experience with this product..."
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 resize-none"
-                    required
-                  />
-                </div>
-                <button type="submit" disabled={submitting}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-xl disabled:opacity-50 transition-colors">
-                  {submitting ? 'Submitting...' : 'Submit Review'}
-                </button>
-              </form>
+        {/* Details */}
+        <div>
+          <p className="badge-orange mb-2">{product.category}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-snug">{product.name}</h1>
+
+          {/* Rating */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex">
+              {[1,2,3,4,5].map(s => (
+                <FiStar key={s} size={16}
+                  className={s <= Math.round(product.ratings) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
+              ))}
             </div>
-          ) : isUser && alreadyReviewed ? (
-            <p className="text-gray-400 text-sm bg-gray-50 rounded-xl p-4">You have already reviewed this product.</p>
-          ) : (
-            <div className="bg-orange-50 rounded-xl p-4 text-center">
-              <p className="text-gray-600 text-sm">
-                <Link to="/login" className="text-orange-500 font-medium">Login</Link> to write a review.
-              </p>
+            <span className="text-sm text-gray-500">{product.ratings?.toFixed(1)} ({product.numReviews} reviews)</span>
+          </div>
+
+          {/* Price */}
+          <div className="flex items-baseline gap-3 mb-6">
+            <span className="text-3xl font-extrabold text-gray-900">
+              Rs {product.price?.toLocaleString()}
+            </span>
+            {product.comparePrice > product.price && (
+              <span className="text-lg text-gray-400 line-through">
+                Rs {product.comparePrice?.toLocaleString()}
+              </span>
+            )}
+            {discount > 0 && (
+              <span className="text-green-600 font-semibold text-sm">
+                Save Rs {(product.comparePrice - product.price).toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          {/* Stock */}
+          <div className="mb-6">
+            {product.stock > 0 ? (
+              <span className="badge-green">✓ In Stock ({product.stock} available)</span>
+            ) : (
+              <span className="badge-red">Out of Stock</span>
+            )}
+          </div>
+
+          {/* Qty + Add to cart */}
+          {product.stock > 0 && (
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700">Quantity:</span>
+                <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                  <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 py-2 hover:bg-gray-50 transition-colors">
+                    <FiMinus size={14} />
+                  </button>
+                  <span className="px-4 py-2 text-sm font-semibold min-w-[40px] text-center">{qty}</span>
+                  <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-3 py-2 hover:bg-gray-50 transition-colors">
+                    <FiPlus size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleAddToCart} className="btn-outline flex-1 py-3.5">
+                  <FiShoppingCart size={16} /> Add to Cart
+                </button>
+                <button onClick={handleBuyNow} className="btn-primary flex-1 py-3.5">
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Trust badges */}
+          <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl text-sm">
+            {[
+              { icon: FiTruck,  text: 'Free delivery on Rs 2000+' },
+              { icon: FiShield, text: '100% authentic products' },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-2 text-gray-600">
+                <Icon size={15} className="text-orange-500 flex-shrink-0" /> {text}
+              </div>
+            ))}
+          </div>
+
+          {/* Seller */}
+          {product.seller && (
+            <div className="mt-4 p-3 border border-gray-100 rounded-xl flex items-center gap-3">
+              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold text-sm">
+                {product.seller.name?.charAt(0)}
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Sold by</p>
+                <p className="text-sm font-semibold text-gray-800">{product.seller.name || 'ShopZone Official'}</p>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="mb-8">
+        <div className="flex gap-1 border-b border-gray-200 mb-6">
+          {[['desc','Description'], ['reviews','Reviews'], ['shipping','Shipping']].map(([key, label]) => (
+            <button key={key} onClick={() => setTab(key)}
+              className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                tab === key ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}>{label}</button>
+          ))}
+        </div>
+
+        {tab === 'desc' && (
+          <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+            <p>{product.description || 'No description available.'}</p>
+          </div>
+        )}
+
+        {tab === 'reviews' && (
+          <div className="space-y-6">
+            {/* Review form */}
+            {user ? (
+              <form onSubmit={handleReviewSubmit} className="card-sm space-y-3">
+                <h3 className="font-semibold text-gray-800">Write a Review</h3>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5].map(s => (
+                    <button key={s} type="button" onClick={() => setReviewForm(f => ({ ...f, rating: s }))}>
+                      <FiStar size={24}
+                        className={s <= reviewForm.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300 hover:text-amber-300'} />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+                  placeholder="Share your experience with this product..."
+                  rows={3} required className="input resize-none"
+                />
+                <button type="submit" disabled={submitting} className="btn-primary py-2 px-6">
+                  {submitting ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </form>
+            ) : (
+              <div className="card-sm text-center text-gray-500 text-sm">
+                <a href="/login" className="text-orange-500 font-semibold">Login</a> to write a review
+              </div>
+            )}
+
+            {/* Reviews list */}
+            {reviews.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-6">No reviews yet. Be the first!</p>
+            ) : (
+              reviews.map(r => (
+                <div key={r._id} className="card-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600 text-sm">
+                      {r.user?.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{r.user?.name}</p>
+                      <p className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    {r.isVerified && <span className="badge-green ml-auto text-xs">✓ Verified Purchase</span>}
+                  </div>
+                  <div className="flex gap-0.5 mb-2">
+                    {[1,2,3,4,5].map(s => (
+                      <FiStar key={s} size={13} className={s <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-700">{r.comment}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {tab === 'shipping' && (
+          <div className="space-y-3 text-sm text-gray-700">
+            <div className="card-sm flex items-start gap-3">
+              <FiTruck className="text-orange-500 mt-0.5" size={18} />
+              <div>
+                <p className="font-semibold mb-1">Standard Delivery</p>
+                <p className="text-gray-500">3-5 business days · Free on orders over Rs 2,000</p>
+              </div>
+            </div>
+            <div className="card-sm flex items-start gap-3">
+              <FiShield className="text-orange-500 mt-0.5" size={18} />
+              <div>
+                <p className="font-semibold mb-1">Easy Returns</p>
+                <p className="text-gray-500">7-day return window for most items</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Related products */}
+      {related.length > 0 && (
+        <div>
+          <h2 className="section-title">Related Products</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
+            {related.slice(0, 6).map(p => <ProductCard key={p._id} product={p} />)}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

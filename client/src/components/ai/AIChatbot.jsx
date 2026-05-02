@@ -1,138 +1,157 @@
+// client/src/components/ai/AIChatbot.jsx
 import { useState, useRef, useEffect } from 'react'
-import { FiMessageSquare, FiX, FiSend, FiMinimize2 } from 'react-icons/fi'
-import { BsRobot } from 'react-icons/bs'
+import { FiMessageCircle, FiX, FiSend, FiMinus } from 'react-icons/fi'
 import api from '../../api/axios'
-import { useAuth } from '../../context/AuthContext'
 
-const QUICK_PROMPTS = [
-  'What are your best deals?',
-  'Help me find electronics',
+const SUGGESTED = [
+  'Show me trending products',
   'How do I track my order?',
   'What is your return policy?',
+  'Best deals today?',
 ]
 
 export default function AIChatbot() {
-  const { isUser } = useAuth()
-  const [open,    setOpen]    = useState(false)
-  const [messages, setMsgs]  = useState([
-    { role: 'assistant', content: '👋 Hi! I\'m ShopBot. How can I help you today?' }
+  const [open,     setOpen]     = useState(false)
+  const [messages, setMessages] = useState([
+    { role: 'assistant', text: 'Hi! 👋 I\'m ShopZone AI. Ask me about products, orders, or anything else!' }
   ])
-  const [input,   setInput]  = useState('')
-  const [loading, setLoading]= useState(false)
-  const bottomRef = useRef(null)
+  const [input,    setInput]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [minimized, setMinimized] = useState(false)
+  const bottomRef  = useRef(null)
+  const inputRef   = useRef(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const send = async (text) => {
-    const msg = (text || input).trim()
-    if (!msg || loading) return
-    setInput('')
-
-    const userMsg   = { role: 'user', content: msg }
-    const newMsgs   = [...messages, userMsg]
-    setMsgs(newMsgs)
-    setLoading(true)
-
-    try {
-      const history = newMsgs.slice(-8)  // send last 8 messages as context
-      const { data } = await api.post('/ai/chat', { message: msg, history })
-      setMsgs(prev => [...prev, { role: 'assistant', content: data.reply }])
-    } catch {
-      setMsgs(prev => [...prev, { role: 'assistant', content: 'Sorry, I\'m having trouble right now. Please try again.' }])
-    } finally {
-      setLoading(false)
+    if (open && !minimized) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      inputRef.current?.focus()
     }
+  }, [messages, open, minimized])
+
+  const sendMessage = async (text) => {
+    const msg = text || input.trim()
+    if (!msg) return
+    setInput('')
+    setMessages(prev => [...prev, { role: 'user', text: msg }])
+    setLoading(true)
+    try {
+      const { data } = await api.post('/ai/chat', { message: msg })
+      setMessages(prev => [...prev, { role: 'assistant', text: data.reply }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, I\'m having trouble connecting. Please try again!' }])
+    } finally { setLoading(false) }
   }
 
-  // Don't show chatbot if not logged in
-  if (!isUser) return null
+  const handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+  }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-      {/* Chat Window */}
-      {open && (
-        <div className="w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-slide-up">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BsRobot className="text-white text-xl" />
-              <div>
-                <p className="text-white font-semibold text-sm">ShopBot AI</p>
-                <p className="text-orange-100 text-xs">Always here to help</p>
-              </div>
-            </div>
-            <button onClick={() => setOpen(false)} className="text-white hover:text-orange-200">
-              <FiX size={18} />
-            </button>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-80 bg-gray-50">
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-                  m.role === 'user'
-                    ? 'bg-orange-500 text-white rounded-br-sm'
-                    : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'
-                }`}>
-                  {m.content}
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-100 shadow-sm px-4 py-2 rounded-2xl rounded-bl-sm">
-                  <div className="flex gap-1 items-center">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Quick prompts */}
-          {messages.length <= 2 && (
-            <div className="px-3 py-2 flex flex-wrap gap-1 bg-white border-t border-gray-100">
-              {QUICK_PROMPTS.map(p => (
-                <button key={p} onClick={() => send(p)}
-                  className="text-xs px-2 py-1 rounded-full border border-orange-200 text-orange-600 hover:bg-orange-50 transition">
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Input */}
-          <div className="p-3 bg-white border-t border-gray-100 flex gap-2">
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && send()}
-              placeholder="Ask anything..."
-              className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-full focus:outline-none focus:border-orange-400"
-              disabled={loading}
-            />
-            <button onClick={() => send()}
-              disabled={!input.trim() || loading}
-              className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
-              <FiSend size={14} />
-            </button>
-          </div>
-        </div>
+    <>
+      {/* Toggle button */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-orange-500 hover:bg-orange-600
+                     text-white rounded-full shadow-lg flex items-center justify-center
+                     z-50 transition-all hover:scale-110 active:scale-95"
+        >
+          <FiMessageCircle size={24} />
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+        </button>
       )}
 
-      {/* Toggle Button */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-14 h-14 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex items-center justify-center transition-all hover:scale-105"
-      >
-        {open ? <FiX size={22} /> : <FiMessageSquare size={22} />}
-      </button>
-    </div>
+      {/* Chat window */}
+      {open && (
+        <div className={`fixed bottom-6 right-6 z-50 w-[340px] bg-white rounded-2xl shadow-2xl
+                         flex flex-col border border-gray-100 animate-slide-up overflow-hidden
+                         transition-all duration-300 ${minimized ? 'h-14' : 'h-[480px]'}`}>
+
+          {/* Header */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-orange-500 text-white flex-shrink-0">
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-lg">🤖</div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm leading-none">ShopZone AI</p>
+              <p className="text-xs text-orange-100 mt-0.5">
+                <span className="inline-block w-1.5 h-1.5 bg-green-300 rounded-full mr-1" />Online
+              </p>
+            </div>
+            <button onClick={() => setMinimized(!minimized)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+              <FiMinus size={16} />
+            </button>
+            <button onClick={() => setOpen(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+              <FiX size={16} />
+            </button>
+          </div>
+
+          {!minimized && (
+            <>
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-orange-500 text-white rounded-br-sm'
+                        : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm">
+                      <div className="flex gap-1">
+                        {[0,1,2].map(i => (
+                          <div key={i} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: `${i * 0.15}s` }} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Suggestions (shown only on first message) */}
+              {messages.length === 1 && (
+                <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+                  {SUGGESTED.map(s => (
+                    <button key={s} onClick={() => sendMessage(s)}
+                      className="text-xs bg-orange-50 text-orange-600 border border-orange-200
+                                 px-2.5 py-1 rounded-full hover:bg-orange-100 transition-colors">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Input */}
+              <div className="flex items-center gap-2 p-3 border-t border-gray-100">
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder="Ask anything..."
+                  className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  disabled={loading}
+                />
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={!input.trim() || loading}
+                  className="w-9 h-9 bg-orange-500 hover:bg-orange-600 disabled:opacity-40
+                             text-white rounded-xl flex items-center justify-center transition-all flex-shrink-0"
+                >
+                  <FiSend size={15} />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
   )
 }

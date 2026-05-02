@@ -1,168 +1,217 @@
-import { useState, useRef, useEffect } from 'react'
+// client/src/components/layout/Navbar.jsx  ← REPLACE
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { FiShoppingCart, FiUser, FiMenu, FiX, FiSearch, FiLogOut, FiPackage, FiBarChart2, FiShoppingBag } from 'react-icons/fi'
+import {
+  FiShoppingCart, FiUser, FiMenu, FiX, FiSearch,
+  FiHeart, FiPackage, FiLogOut, FiSettings, FiChevronDown,
+  FiLayout
+} from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
-import NotificationBell from '../NotificationBell'
-import { useTracker } from '../../hooks/useTracker'
+import toast from 'react-hot-toast'
 
 export default function Navbar() {
   const { user, logout, isAdmin, isSeller } = useAuth()
   const { cartCount } = useCart()
-  const { track }     = useTracker()
-  const navigate      = useNavigate()
-  const location      = useLocation()
-  const [open,        setOpen]   = useState(false)
-  const [search,      setSearch] = useState('')
-  const [dropOpen,    setDropOpen] = useState(false)
-  const dropRef = useRef(null)
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  useEffect(() => { setOpen(false) }, [location])
+  const [mobileOpen, setMobileOpen]   = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [scrolled, setScrolled]       = useState(false)
+  const userMenuRef = useRef(null)
 
   useEffect(() => {
-    const fn = e => { if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false) }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
+    const onScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleSearch = e => {
+  // Close user menu on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target))
+        setUserMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Close mobile on route change
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  const handleSearch = (e) => {
     e.preventDefault()
-    if (!search.trim()) return
-    track('search', { keyword: search.trim() })
-    navigate(`/products?search=${encodeURIComponent(search.trim())}`)
-    setSearch('')
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }
+
+  const handleLogout = () => {
+    logout()
+    setUserMenuOpen(false)
+    toast.success('Logged out successfully')
+    navigate('/')
   }
 
   return (
-    <nav className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
-        {/* Logo */}
-        <Link to="/" className="font-extrabold text-xl text-orange-500 shrink-0">
-          Shop<span className="text-gray-900">Zone</span>
-        </Link>
+    <nav className={`sticky top-0 z-50 bg-white transition-shadow duration-200 ${scrolled ? 'shadow-nav' : 'border-b border-gray-100'}`}>
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center h-16 gap-4">
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-xl hidden sm:flex">
-          <div className="relative w-full">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-            />
-          </div>
-        </form>
-
-        {/* Right side */}
-        <div className="flex items-center gap-2 ml-auto">
-          {/* Notification bell */}
-          {user && <NotificationBell />}
-
-          {/* Cart */}
-          <Link to="/cart" className="relative p-2 text-gray-600 hover:text-orange-500 transition-colors">
-            <FiShoppingCart size={20}/>
-            {cartCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                {cartCount > 9 ? '9+' : cartCount}
-              </span>
-            )}
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-2xl">🛍️</span>
+            <span className="text-xl font-extrabold text-gray-900">
+              Shop<span className="text-orange-500">Zone</span>
+            </span>
           </Link>
 
-          {/* User menu */}
-          {user ? (
-            <div className="relative" ref={dropRef}>
-              <button onClick={() => setDropOpen(o => !o)}
-                className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
-                {user.avatar
-                  ? <img src={user.avatar} className="w-7 h-7 rounded-full object-cover" alt=""/>
-                  : <div className="w-7 h-7 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 text-xs font-bold">
-                      {user.name?.[0]?.toUpperCase()}
-                    </div>
-                }
-                <span className="text-sm font-medium text-gray-700 hidden sm:inline max-w-20 truncate">{user.name}</span>
+          {/* Search bar — desktop */}
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-4">
+            <div className="relative w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products..."
+                className="input pr-10 py-2 text-sm"
+              />
+              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors">
+                <FiSearch size={16} />
               </button>
+            </div>
+          </form>
 
-              {dropOpen && (
-                <div className="absolute right-0 top-10 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-slide-down">
-                  <div className="px-4 py-2 border-b border-gray-50 mb-1">
-                    <p className="font-semibold text-sm text-gray-800 truncate">{user.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-1 inline-block ${
-                      user.role==='admin' ? 'bg-orange-100 text-orange-700' :
-                      user.role==='seller'? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'}`}>{user.role}</span>
-                  </div>
-                  <Link to="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors">
-                    <FiUser size={14}/> My Profile
-                  </Link>
-                  <Link to="/orders" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors">
-                    <FiPackage size={14}/> My Orders
-                  </Link>
-                  {isSeller && (
-                    <Link to="/seller" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors">
-                      <FiShoppingBag size={14}/> Seller Dashboard
-                    </Link>
-                  )}
-                  {isAdmin && (
-                    <Link to="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors">
-                      <FiBarChart2 size={14}/> Admin Panel
-                    </Link>
-                  )}
-                  {!isSeller && !isAdmin && (
-                    <Link to="/become-seller" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors">
-                      <FiShoppingBag size={14}/> Become a Seller
-                    </Link>
-                  )}
-                  <div className="border-t border-gray-50 mt-1 pt-1">
-                    <button onClick={() => { logout(); navigate('/'); setDropOpen(false) }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
-                      <FiLogOut size={14}/> Sign Out
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-1 ml-auto">
+            <Link to="/products" className="btn-ghost text-sm">Products</Link>
+
+            {/* Cart */}
+            <Link to="/cart" className="relative btn-ghost">
+              <FiShoppingCart size={18} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </Link>
+
+            {/* User menu */}
+            {user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 btn-ghost"
+                >
+                  {user.avatar
+                    ? <img src={user.avatar} alt="avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-orange-200" />
+                    : <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold">
+                        {user.name?.charAt(0).toUpperCase()}
+                      </div>
+                  }
+                  <span className="text-sm font-medium max-w-[80px] truncate">{user.name?.split(' ')[0]}</span>
+                  <FiChevronDown size={14} className={`transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-lg py-2 animate-fade-in z-50">
+                    <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                      <p className="font-semibold text-sm text-gray-800">{user.name}</p>
+                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                    </div>
+                    <DropLink to="/profile"  icon={<FiUser size={14}/>}    label="Profile" onClick={() => setUserMenuOpen(false)} />
+                    <DropLink to="/orders"   icon={<FiPackage size={14}/>} label="My Orders" onClick={() => setUserMenuOpen(false)} />
+                    {(isAdmin || isSeller) && (
+                      <DropLink
+                        to={isAdmin ? '/admin' : '/seller'}
+                        icon={<FiLayout size={14}/>}
+                        label={isAdmin ? 'Admin Panel' : 'Seller Panel'}
+                        onClick={() => setUserMenuOpen(false)}
+                      />
+                    )}
+                    <hr className="my-1 border-gray-100" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <FiLogOut size={14} /> Logout
                     </button>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-orange-500 transition-colors px-3 py-1.5">
-                Login
-              </Link>
-              <Link to="/register" className="text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-xl transition-colors">
-                Sign Up
-              </Link>
-            </div>
-          )}
-
-          {/* Mobile menu toggle */}
-          <button onClick={() => setOpen(o => !o)} className="sm:hidden p-2 text-gray-600">
-            {open ? <FiX size={20}/> : <FiMenu size={20}/>}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile search */}
-      <div className="sm:hidden px-4 pb-3">
-        <form onSubmit={handleSearch}>
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15}/>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"/>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login"    className="btn-ghost text-sm">Login</Link>
+                <Link to="/register" className="btn-primary text-sm py-2 px-4">Sign Up</Link>
+              </div>
+            )}
           </div>
-        </form>
+
+          {/* Mobile: cart + hamburger */}
+          <div className="flex items-center gap-2 md:hidden ml-auto">
+            <Link to="/cart" className="relative btn-ghost p-2">
+              <FiShoppingCart size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </Link>
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="btn-ghost p-2">
+              {mobileOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile search */}
+        <div className="md:hidden pb-3">
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products..."
+              className="input pr-10 py-2.5 text-sm"
+            />
+            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <FiSearch size={16} />
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Mobile menu */}
-      {open && (
-        <div className="sm:hidden border-t border-gray-100 bg-white py-2 px-4 space-y-1 animate-slide-down">
-          <Link to="/"        className="block py-2 text-sm text-gray-700 hover:text-orange-500">Home</Link>
-          <Link to="/products"className="block py-2 text-sm text-gray-700 hover:text-orange-500">Products</Link>
-          <Link to="/about"   className="block py-2 text-sm text-gray-700 hover:text-orange-500">About</Link>
-          {user && <Link to="/orders"  className="block py-2 text-sm text-gray-700 hover:text-orange-500">My Orders</Link>}
-          {isSeller && <Link to="/seller" className="block py-2 text-sm text-gray-700 hover:text-orange-500">Seller Dashboard</Link>}
-          {isAdmin  && <Link to="/admin"  className="block py-2 text-sm text-gray-700 hover:text-orange-500">Admin Panel</Link>}
+      {mobileOpen && (
+        <div className="md:hidden bg-white border-t border-gray-100 px-4 pb-4 animate-slide-up">
+          <Link to="/products" className="flex items-center py-3 text-sm font-medium text-gray-700 border-b border-gray-50">Products</Link>
+          {user ? (
+            <>
+              <Link to="/profile"  className="flex items-center gap-2 py-3 text-sm text-gray-700 border-b border-gray-50"><FiUser size={15}/> Profile</Link>
+              <Link to="/orders"   className="flex items-center gap-2 py-3 text-sm text-gray-700 border-b border-gray-50"><FiPackage size={15}/> My Orders</Link>
+              {isAdmin  && <Link to="/admin"  className="flex items-center gap-2 py-3 text-sm text-gray-700 border-b border-gray-50"><FiLayout size={15}/> Admin Panel</Link>}
+              {isSeller && <Link to="/seller" className="flex items-center gap-2 py-3 text-sm text-gray-700 border-b border-gray-50"><FiLayout size={15}/> Seller Panel</Link>}
+              <button onClick={handleLogout} className="flex items-center gap-2 pt-3 text-sm text-red-500 w-full"><FiLogOut size={15}/> Logout</button>
+            </>
+          ) : (
+            <div className="flex gap-3 pt-3">
+              <Link to="/login"    className="btn-outline flex-1 py-2.5 text-sm">Login</Link>
+              <Link to="/register" className="btn-primary flex-1 py-2.5 text-sm">Sign Up</Link>
+            </div>
+          )}
         </div>
       )}
     </nav>
+  )
+}
+
+function DropLink({ to, icon, label, onClick }) {
+  return (
+    <Link to={to} onClick={onClick}
+      className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+      {icon} {label}
+    </Link>
   )
 }

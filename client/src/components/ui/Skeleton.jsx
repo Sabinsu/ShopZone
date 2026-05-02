@@ -1,74 +1,46 @@
-// Usage:
-//   <Skeleton type="card" count={6} />
-//   <Skeleton type="list" count={5} />
-//   <Skeleton type="detail" />
-//   <Skeleton type="text" lines={3} />
-
+// client/src/components/ui/Skeleton.jsx
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-      <div className="aspect-square bg-gray-200"/>
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden animate-pulse">
+      <div className="aspect-square bg-gray-200" />
       <div className="p-3 space-y-2">
-        <div className="h-3 bg-gray-200 rounded w-1/3"/>
-        <div className="h-4 bg-gray-200 rounded w-full"/>
-        <div className="h-4 bg-gray-200 rounded w-3/4"/>
-        <div className="flex justify-between items-center mt-2">
-          <div className="h-5 bg-gray-200 rounded w-1/3"/>
-          <div className="w-8 h-8 bg-gray-200 rounded-full"/>
+        <div className="h-3 bg-gray-200 rounded w-1/3" />
+        <div className="h-4 bg-gray-200 rounded w-4/5" />
+        <div className="h-4 bg-gray-200 rounded w-3/5" />
+        <div className="h-5 bg-gray-200 rounded w-2/5 mt-3" />
+      </div>
+    </div>
+  )
+}
+
+export function SkeletonLine({ className = '' }) {
+  return <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
+}
+
+export function SkeletonProductDetail() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 animate-pulse">
+      <div className="grid md:grid-cols-2 gap-10">
+        <div className="aspect-square bg-gray-200 rounded-2xl" />
+        <div className="space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-3/4" />
+          <div className="h-8 bg-gray-200 rounded w-1/2" />
+          <div className="h-4 bg-gray-200 rounded w-full" />
+          <div className="h-4 bg-gray-200 rounded w-5/6" />
+          <div className="h-4 bg-gray-200 rounded w-4/6" />
+          <div className="h-12 bg-gray-200 rounded-xl w-full mt-6" />
         </div>
       </div>
     </div>
   )
 }
 
-export function SkeletonList() {
+export function SkeletonTable({ rows = 5 }) {
   return (
-    <div className="flex gap-4 p-4 bg-white rounded-2xl border border-gray-100 animate-pulse">
-      <div className="w-16 h-16 bg-gray-200 rounded-xl shrink-0"/>
-      <div className="flex-1 space-y-2">
-        <div className="h-4 bg-gray-200 rounded w-3/4"/>
-        <div className="h-3 bg-gray-200 rounded w-1/2"/>
-        <div className="h-3 bg-gray-200 rounded w-1/4"/>
-      </div>
-      <div className="h-6 bg-gray-200 rounded w-16 shrink-0"/>
-    </div>
-  )
-}
-
-export function SkeletonDetail() {
-  return (
-    <div className="grid md:grid-cols-2 gap-10 animate-pulse">
-      <div className="aspect-square bg-gray-200 rounded-2xl"/>
-      <div className="space-y-4">
-        <div className="h-4 bg-gray-200 rounded w-1/4"/>
-        <div className="h-8 bg-gray-200 rounded w-3/4"/>
-        <div className="h-6 bg-gray-200 rounded w-1/4"/>
-        <div className="h-20 bg-gray-200 rounded"/>
-        <div className="h-12 bg-gray-200 rounded-xl"/>
-      </div>
-    </div>
-  )
-}
-
-export function SkeletonText({ lines = 3 }) {
-  return (
-    <div className="space-y-2 animate-pulse">
-      {[...Array(lines)].map((_, i) => (
-        <div key={i} className={`h-4 bg-gray-200 rounded ${i === lines - 1 ? 'w-2/3' : 'w-full'}`}/>
+    <div className="animate-pulse space-y-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="h-14 bg-gray-100 rounded-xl" />
       ))}
     </div>
-  )
-}
-
-export default function Skeleton({ type = 'card', count = 1, lines }) {
-  if (type === 'detail') return <SkeletonDetail/>
-  if (type === 'text')   return <SkeletonText lines={lines}/>
-
-  return (
-    <>
-      {[...Array(count)].map((_, i) =>
-        type === 'list' ? <SkeletonList key={i}/> : <SkeletonCard key={i}/>
-      )}
-    </>
   )
 }

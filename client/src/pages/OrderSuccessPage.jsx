@@ -1,49 +1,52 @@
-import { useEffect } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
-import { FiCheck, FiPackage, FiArrowRight } from 'react-icons/fi'
-import confetti from 'canvas-confetti'
+// client/src/pages/OrderSuccessPage.jsx
+import { useEffect, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { FiCheckCircle, FiPackage, FiArrowRight } from 'react-icons/fi'
+import api from '../api/axios'
 
 export default function OrderSuccessPage() {
-  const { id }   = useParams()
-  const navigate = useNavigate()
+  const { id } = useParams()
+  const [order, setOrder] = useState(null)
 
   useEffect(() => {
-    // Simple confetti without package dependency — pure CSS celebration
-    const timer = setTimeout(() => {}, 100)
-    return () => clearTimeout(timer)
-  }, [])
+    api.get(`/orders/${id}`).then(r => setOrder(r.data)).catch(() => {})
+  }, [id])
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4">
-      <div className="max-w-md w-full text-center">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <FiCheck size={48} className="text-green-500"/>
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4">
+      <div className="text-center max-w-md w-full animate-fade-in">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+          <FiCheckCircle className="text-green-500" size={40} />
         </div>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-3">Order Placed! 🎉</h1>
-        <p className="text-gray-500 mb-1">Thank you for your order.</p>
-        {id && (
-          <p className="text-sm text-gray-400 mb-6">
-            Order ID: <span className="font-mono font-semibold text-gray-700">#{id.slice(-8).toUpperCase()}</span>
-          </p>
-        )}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6 text-left space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center shrink-0">
-              <FiPackage className="text-orange-500" size={16}/>
+        <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Order Placed! 🎉</h1>
+        <p className="text-gray-500 mb-6">Your order has been successfully placed. We'll notify you when it ships.</p>
+
+        {order && (
+          <div className="card text-left mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-sm font-semibold text-gray-700">Order ID</p>
+              <p className="text-sm text-orange-600 font-mono">#{order._id?.slice(-8).toUpperCase()}</p>
             </div>
-            <div>
-              <p className="font-semibold text-gray-800 text-sm">What happens next?</p>
-              <p className="text-xs text-gray-500 mt-1">Our team will confirm your order within 1-2 hours. You'll receive a notification when it's shipped.</p>
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-sm font-semibold text-gray-700">Total</p>
+              <p className="text-sm font-bold">Rs {order.totalPrice?.toLocaleString()}</p>
+            </div>
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-sm font-semibold text-gray-700">Payment</p>
+              <span className="badge-orange">Cash on Delivery</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-semibold text-gray-700">Status</p>
+              <span className="badge-blue">Pending</span>
             </div>
           </div>
-        </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to={`/orders/${id}`}
-            className="btn-primary flex items-center justify-center gap-2 py-3">
+          <Link to={`/orders/${id}`} className="btn-outline flex items-center gap-2 justify-center">
             <FiPackage size={16}/> Track Order
           </Link>
-          <Link to="/products"
-            className="btn-outline flex items-center justify-center gap-2 py-3">
+          <Link to="/products" className="btn-primary flex items-center gap-2 justify-center">
             Continue Shopping <FiArrowRight size={16}/>
           </Link>
         </div>
