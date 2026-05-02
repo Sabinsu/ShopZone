@@ -1,61 +1,36 @@
-const mongoose = require('mongoose');
-
-const reviewSchema = new mongoose.Schema({
-  user:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  name:    { type: String, required: true },
-  rating:  { type: Number, required: true, min: 1, max: 5 },
-  comment: { type: String, required: true },
-  helpful: { type: Number, default: 0 },
-}, { timestamps: true });
+// server/models/Product.js  ← REPLACE
+const mongoose = require('mongoose')
 
 const productSchema = new mongoose.Schema({
-  name:         { type: String, required: true, trim: true },
-  description:  { type: String, required: true },
+  name:         { type: String, required: true, trim: true, index: true },
+  description:  { type: String, default: '' },
   price:        { type: Number, required: true, min: 0 },
   comparePrice: { type: Number, default: 0 },
-  category:     { type: String, required: true },
-  subCategory:  { type: String, default: '' },
-  brand:        { type: String, default: '' },
   images:       [{ type: String }],
-  stock:        { type: Number, required: true, default: 0 },
-  sold:         { type: Number, default: 0 },
-  ratings:      { type: Number, default: 0 },
-  numReviews:   { type: Number, default: 0 },
-  reviews:      [reviewSchema],
-  isFeatured:   { type: Boolean, default: false },
-  isActive:     { type: Boolean, default: true },
-  tags:         [{ type: String }],
+  category:     { type: String, required: true, index: true,
+                  enum: ['Electronics','Fashion','Home & Garden','Sports','Books','Beauty','Toys','Grocery','Other'] },
 
-  // ── Multi-vendor: who owns this product ──
-  seller: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref:  'User',
-    default: null,   // null = platform/admin product
-  },
+  stock:     { type: Number, default: 0, min: 0 },
+  sold:      { type: Number, default: 0 },
+  ratings:   { type: Number, default: 0, min: 0, max: 5 },
+  numReviews:{ type: Number, default: 0 },
 
-  // ── Auto-import tracking ──
-  externalId:  { type: String, default: '' },   // prevents duplicate imports
-  externalSrc: { type: String, default: '' },   // e.g. 'fakestore', 'dummyjson'
+  isFeatured: { type: Boolean, default: false, index: true },
+  isActive:   { type: Boolean, default: true,  index: true },
 
-  // ── AI / recommendations ──
-  viewCount:    { type: Number, default: 0 },
-  clickCount:   { type: Number, default: 0 },
-  aiEmbedding:  { type: [Number], select: false }, // future vector search
-}, { timestamps: true });
+  seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
-productSchema.index({ name: 'text', description: 'text', category: 'text', brand: 'text', tags: 'text' });
-productSchema.index({ externalId: 1, externalSrc: 1 }, { unique: false, sparse: true });
+  tags: [{ type: String }],
 
-// Update ratings average when reviews change
-productSchema.methods.updateRatings = async function () {
-  if (this.reviews.length === 0) {
-    this.ratings = 0;
-    this.numReviews = 0;
-  } else {
-    this.ratings = this.reviews.reduce((a, r) => a + r.rating, 0) / this.reviews.length;
-    this.numReviews = this.reviews.length;
-  }
-  return this.save();
-};
+  // Source tracking (for imported products)
+  sourceUrl: { type: String, default: '' },
+  externalId:{ type: String, default: '' },
+}, { timestamps: true })
 
-module.exports = mongoose.model('Product', productSchema);
+// Full-text search
+productSchema.index({ name: 'text', description: 'text', tags: 'text' })
+productSchema.index({ price: 1 })
+productSchema.index({ ratings: -1 })
+productSchema.index({ sold: -1 })
+
+module.exports = mongoose.model('Product', productSchema)

@@ -1,73 +1,61 @@
-const mongoose = require('mongoose');
-const bcrypt   = require('bcryptjs');
-
-const notificationSchema = new mongoose.Schema({
-  message: { type: String, required: true },
-  type:    { type: String, enum: ['order','product','system','promo'], default: 'system' },
-  read:    { type: Boolean, default: false },
-  link:    { type: String, default: '' },
-}, { timestamps: true });
+// server/models/User.js  ← REPLACE
+const mongoose = require('mongoose')
+const bcrypt   = require('bcryptjs')
 
 const userSchema = new mongoose.Schema({
   name:     { type: String, required: true, trim: true },
   email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, minlength: 6 },          // optional for OAuth users
-  phone:    { type: String, default: '' },
-  address: {
-    street:  { type: String, default: '' },
-    city:    { type: String, default: '' },
-    state:   { type: String, default: '' },
-    country: { type: String, default: '' },
-    zip:     { type: String, default: '' },
-  },
+  password: { type: String, default: '' },           // empty for Google-only accounts
   avatar:   { type: String, default: '' },
+  phone:    { type: String, default: '' },
+  role:     { type: String, enum: ['user','seller','admin'], default: 'user' },
+  isActive: { type: Boolean, default: true },
+  googleId: { type: String, default: '' },
 
-  // ── Roles: 'user' | 'seller' | 'admin' ──
-  role:     { type: String, enum: ['user', 'seller', 'admin'], default: 'user' },
+  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
 
-  // ── Seller info (only when role === 'seller') ──
+  // Seller info
   sellerInfo: {
     storeName:   { type: String, default: '' },
     description: { type: String, default: '' },
-    approved:    { type: Boolean, default: false },  // admin must approve sellers
-    totalSales:  { type: Number,  default: 0 },
+    approved:    { type: Boolean, default: false },
+    appliedAt:   { type: Date },
   },
 
-  // ── OAuth ──
-  googleId: { type: String, default: '' },
+  // Notification inbox
+  notifications: [{
+    message:   String,
+    read:      { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+  }],
 
-  // ── Behaviour (for AI recommendations) ──
-  searchHistory: [{ type: String }],
-  viewedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  wishlist:       [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  // AI recommendation tracking (embedded, lightweight)
+  viewedProducts:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  purchasedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
 
-  // ── Notifications ──
-  notifications: [notificationSchema],
-
-  // ── Account status ──
-  isActive:   { type: Boolean, default: true },
-  resetToken: { type: String },
-  resetExpire:{ type: Date },
-}, { timestamps: true });
+  resetPasswordToken:   String,
+  resetPasswordExpire:  Date,
+}, { timestamps: true })
 
 // Hash password before save
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password') || !this.password) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
+  if (!this.isModified('password') || !this.password) return next()
+  const salt   = await bcrypt.genSalt(10)
+  this.password = await bcrypt.hash(this.password, salt)
+  next()
+})
 
 userSchema.methods.matchPassword = async function (entered) {
-  if (!this.password) return false;
-  return bcrypt.compare(entered, this.password);
-};
+  if (!this.password) return false
+  return bcrypt.compare(entered, this.password)
+}
 
-// Push a notification helper
-userSchema.methods.pushNotification = async function (message, type = 'system', link = '') {
-  this.notifications.unshift({ message, type, link });
-  if (this.notifications.length > 50) this.notifications.pop(); // keep last 50
-  return this.save();
-};
+// Keep only last 50 viewed products
+userSchema.methods.trackView = function (productId) {
+  const pid  = productId.toString()
+  this.viewedProducts = this.viewedProducts.filter(p => p.toString() !== pid)
+  this.viewedProducts.unshift(productId)
+  if (this.viewedProducts.length > 50) this.viewedProducts = this.viewedProducts.slice(0, 50)
+}
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('User', userSchema)

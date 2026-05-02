@@ -1,21 +1,9 @@
-const express = require('express');
-const router  = express.Router();
-const { protect } = require('../middleware/authMiddleware');
-const {
-  trackActivity,
-  getForYou,
-  getRelated,
-  getTrending,
-  getCollaborative,
-} = require('../controllers/recommendationController');
+// server/routes/recommendationRoutes.js  ← REPLACE
+const express = require('express')
+const router  = express.Router()
+const ctrl    = require('../controllers/recommendationController')
 
-// Public routes
-router.get('/trending',             getTrending);
-router.get('/related/:productId',   getRelated);
-router.get('/collaborative/:productId', getCollaborative);
+router.get ('/:userId', ctrl.getRecommendations)
+router.post('/track',   ctrl.trackAction)
 
-// Auth required
-router.post('/track',   protect, trackActivity);
-router.get('/for-you',  protect, getForYou);
-
-module.exports = router;
+module.exports = router

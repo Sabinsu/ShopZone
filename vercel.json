@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd client && rm -rf node_modules && npm install && npx --yes vite build",
-  "outputDirectory": "client/dist",
-  "installCommand": "echo skip",
-  "framework": null
-}
