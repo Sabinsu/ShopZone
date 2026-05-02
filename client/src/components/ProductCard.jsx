@@ -1,4 +1,4 @@
-// client/src/components/ProductCard.jsx  ← REPLACE existing file
+// client/src/components/ProductCard.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiShoppingCart, FiHeart, FiStar, FiEye } from 'react-icons/fi'
@@ -11,68 +11,83 @@ export default function ProductCard({ product }) {
   const { addToCart, isInCart } = useCart()
   const { isUser, user, updateUser } = useAuth()
   const navigate = useNavigate()
-  const [imgLoaded, setImgLoaded] = useState(false)
-  const [wishlisted, setWishlisted] = useState(
-    user?.wishlist?.includes(product._id)
-  )
+  const [imgLoaded,  setImgLoaded]  = useState(false)
+  const [hovered,    setHovered]    = useState(false)
+  const [wishlisted, setWishlisted] = useState(user?.wishlist?.includes(product._id))
 
-  const discount = product.comparePrice && product.comparePrice > product.price
-    ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
-    : 0
+  const discount = product.comparePrice > product.price
+    ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100) : 0
 
   const handleAddToCart = (e) => {
     e.stopPropagation()
     addToCart(product)
-    toast.success(`${product.name} added to cart!`, { icon: '🛒' })
+    toast.success(`Added to cart!`, { icon: '🛒' })
   }
 
   const handleWishlist = async (e) => {
     e.stopPropagation()
-    if (!isUser) { toast.error('Please login to add to wishlist'); return }
+    if (!isUser) { toast.error('Please login first'); return }
     try {
       const { data } = await api.post(`/auth/wishlist/${product._id}`)
       setWishlisted(data.added)
       updateUser({ wishlist: data.wishlist })
-      toast.success(data.added ? 'Added to wishlist' : 'Removed from wishlist')
-    } catch { toast.error('Failed to update wishlist') }
+    } catch { toast.error('Failed') }
   }
 
   return (
     <div
       onClick={() => navigate(`/products/${product._id}`)}
-      className="group relative bg-white border border-gray-100 rounded-2xl overflow-hidden cursor-pointer
-                 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: 'var(--dark-3)',
+        border: `1px solid ${hovered ? 'rgba(212,175,55,0.28)' : 'var(--dark-5)'}`,
+        borderRadius: 18,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'all 0.32s cubic-bezier(0.16,1,0.3,1)',
+        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 12px 48px rgba(212,175,55,0.12), 0 4px 20px rgba(0,0,0,0.4)' : '0 2px 16px rgba(0,0,0,0.3)',
+      }}
     >
-      {/* Image container */}
-      <div className="relative overflow-hidden bg-gray-50 aspect-square">
-        {/* Skeleton while loading */}
-        {!imgLoaded && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-        )}
+      {/* Image */}
+      <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '1', background: 'var(--dark-4)' }}>
+        {!imgLoaded && <div className="skeleton" style={{ position:'absolute', inset:0, borderRadius:0 }} />}
 
         <img
-          src={product.images?.[0] || '/placeholder.png'}
+          src={product.images?.[0] || 'https://placehold.co/400x400/1A1A24/D4AF37?text=ShopZone'}
           alt={product.name}
           onLoad={() => setImgLoaded(true)}
-          className={`w-full h-full object-cover transition-transform duration-500
-                      group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+            transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',
+            transform: hovered ? 'scale(1.08)' : 'scale(1)',
+            opacity: imgLoaded ? 1 : 0,
+          }}
         />
 
+        {/* Overlay on hover */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to top, rgba(10,10,15,0.7) 0%, transparent 50%)',
+          opacity: hovered ? 1 : 0, transition: 'opacity 0.3s',
+        }}/>
+
         {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
+        <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
           {discount > 0 && (
-            <span className="badge bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+            <span style={{ background:'var(--gold)', color:'#0A0A0F', fontSize:'0.65rem', fontWeight:800, padding:'3px 8px', borderRadius:6, letterSpacing:'0.04em' }}>
               -{discount}%
             </span>
           )}
-          {product.stock === 0 && (
-            <span className="badge bg-gray-700 text-white text-xs px-2 py-0.5 rounded-full">
-              Out of stock
+          {product.isFeatured && (
+            <span style={{ background:'rgba(212,175,55,0.15)', color:'var(--gold)', border:'1px solid rgba(212,175,55,0.3)', fontSize:'0.6rem', fontWeight:700, padding:'2px 7px', borderRadius:5, letterSpacing:'0.06em' }}>
+              ★ FEATURED
             </span>
           )}
-          {product.isFeatured && (
-            <span className="badge bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
-              ⭐ Featured
+          {product.stock === 0 && (
+            <span style={{ background:'rgba(248,113,113,0.15)', color:'#f87171', border:'1px solid rgba(248,113,113,0.3)', fontSize:'0.6rem', fontWeight:700, padding:'2px 7px', borderRadius:5 }}>
+              SOLD OUT
             </span>
           )}
         </div>
@@ -80,86 +95,84 @@ export default function ProductCard({ product }) {
         {/* Wishlist button */}
         <button
           onClick={handleWishlist}
-          className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center
-                     bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100
-                     transition-opacity duration-200 hover:scale-110"
+          style={{
+            position: 'absolute', top: 10, right: 10,
+            width: 32, height: 32, borderRadius: '50%',
+            background: wishlisted ? 'rgba(248,113,113,0.2)' : 'rgba(10,10,15,0.6)',
+            border: wishlisted ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all 0.2s',
+            opacity: hovered || wishlisted ? 1 : 0,
+          }}
         >
-          <FiHeart
-            size={15}
-            className={wishlisted ? 'fill-red-500 text-red-500' : 'text-gray-400'}
-          />
+          <FiHeart size={13} style={{ color: wishlisted ? '#f87171' : '#F5F0E8', fill: wishlisted ? '#f87171' : 'none' }} />
         </button>
 
-        {/* Quick view overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
-
-        {/* Bottom action strip */}
-        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0
-                        transition-transform duration-300 p-2">
-          {product.stock > 0 ? (
-            <button
-              onClick={handleAddToCart}
-              className={`w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold
-                         rounded-xl transition-all
-                         ${isInCart(product._id)
-                           ? 'bg-green-500 text-white'
-                           : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
-            >
-              <FiShoppingCart size={14} />
-              {isInCart(product._id) ? 'In Cart' : 'Add to Cart'}
-            </button>
-          ) : (
-            <button
-              onClick={e => { e.stopPropagation(); navigate(`/products/${product._id}`) }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold
-                         bg-gray-700 text-white rounded-xl"
-            >
-              <FiEye size={14} /> View Details
-            </button>
-          )}
-        </div>
+        {/* Add to cart — slides up on hover */}
+        {product.stock > 0 && (
+          <button
+            onClick={handleAddToCart}
+            style={{
+              position: 'absolute', bottom: 10, left: 10, right: 10,
+              padding: '9px', borderRadius: 10,
+              background: isInCart(product._id)
+                ? 'rgba(0,212,170,0.85)'
+                : 'rgba(212,175,55,0.92)',
+              backdropFilter: 'blur(8px)',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontSize: '0.8rem', fontWeight: 700,
+              color: '#0A0A0F', letterSpacing: '0.02em',
+              transform: hovered ? 'translateY(0)' : 'translateY(60px)',
+              transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
+            }}
+          >
+            <FiShoppingCart size={13}/>
+            {isInCart(product._id) ? 'In Cart ✓' : 'Add to Cart'}
+          </button>
+        )}
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{product.category}</p>
-        <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight mb-2 min-h-[2.5rem]">
+      <div style={{ padding: '12px 14px 14px' }}>
+        <p style={{ fontSize: '0.65rem', color: 'var(--gold)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
+          {product.category}
+        </p>
+        <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.4, marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.45rem', fontFamily: '"DM Sans", sans-serif' }}>
           {product.name}
         </h3>
 
-        {/* Rating */}
+        {/* Stars */}
         {product.numReviews > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+            <div style={{ display: 'flex' }}>
               {[1,2,3,4,5].map(s => (
-                <FiStar key={s} size={11}
-                  className={s <= Math.round(product.ratings)
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'text-gray-300'
-                  }
-                />
+                <FiStar key={s} size={11} style={{
+                  color: s <= Math.round(product.ratings) ? 'var(--gold)' : 'var(--dark-5)',
+                  fill:  s <= Math.round(product.ratings) ? 'var(--gold)' : 'transparent',
+                }}/>
               ))}
             </div>
-            <span className="text-xs text-gray-400">({product.numReviews})</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>({product.numReviews})</span>
           </div>
         )}
 
         {/* Price */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-base font-bold text-gray-900">
-            Rs {product.price.toLocaleString()}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)', fontFamily: '"Space Mono", monospace' }}>
+            Rs {product.price?.toLocaleString()}
           </span>
           {product.comparePrice > product.price && (
-            <span className="text-xs text-gray-400 line-through">
-              Rs {product.comparePrice.toLocaleString()}
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', textDecoration: 'line-through' }}>
+              Rs {product.comparePrice?.toLocaleString()}
             </span>
           )}
         </div>
 
-        {/* Stock indicator */}
         {product.stock > 0 && product.stock <= 10 && (
-          <p className="text-xs text-red-500 mt-1 font-medium">
-            Only {product.stock} left!
+          <p style={{ fontSize: '0.7rem', color: '#f87171', marginTop: 5, fontWeight: 600 }}>
+            ⚡ Only {product.stock} left
           </p>
         )}
       </div>
