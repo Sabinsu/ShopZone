@@ -1,6 +1,6 @@
 // client/src/components/admin/AdminSidebar.jsx
 import { NavLink, useNavigate } from 'react-router-dom'
-import { FiHome, FiShoppingBag, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiExternalLink } from 'react-icons/fi'
+import { FiHome, FiShoppingBag, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiExternalLink, FiShield } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 

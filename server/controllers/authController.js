@@ -152,13 +152,29 @@ exports.becomeSeller = asyncHandler(async (req, res) => {
   if (!storeName) return res.status(400).json({ message: 'Store name is required' })
 
   const user = await User.findById(req.user._id)
-  user.role = 'seller'
+
+  // Check if already a seller
+  if (user.role === 'seller' && user.sellerInfo?.status === 'approved') {
+    return res.status(400).json({ message: 'You are already an approved seller' })
+  }
+  // Check if already pending
+  if (user.sellerInfo?.status === 'pending') {
+    return res.status(400).json({ message: 'Your application is already under review' })
+  }
+
+  // Set pending — role stays 'user' until admin approves
   user.sellerInfo = {
     storeName,
     description: description || '',
-    approved:    false,
-    appliedAt:   new Date(),
+    status:    'pending',
+    approved:  false,
+    appliedAt: new Date(),
   }
   await user.save()
-  res.json({ message: 'Application submitted', user })
+
+  const token = require('../middleware/authMiddleware').generateToken(user._id)
+  res.json({
+    message: 'Application submitted! Await admin approval.',
+    user: { ...user.toObject(), token },
+  })
 })

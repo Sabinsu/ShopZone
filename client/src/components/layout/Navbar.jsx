@@ -5,11 +5,12 @@ import { FiShoppingCart, FiUser, FiMenu, FiX, FiSearch, FiPackage, FiLogOut, FiC
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import toast from 'react-hot-toast'
+import ThemeToggle from '../ui/ThemeToggle'
 
 const S = {
   nav: (scrolled) => ({
     position:'sticky', top:0, zIndex:100,
-    background: scrolled ? 'rgba(10,10,15,0.95)' : 'rgba(10,10,15,0.7)',
+    background: scrolled ? 'var(--nav-bg)' : 'rgba(10,10,15,0.7)',
     backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)',
     borderBottom:`1px solid ${scrolled?'rgba(212,175,55,0.18)':'rgba(255,255,255,0.05)'}`,
     transition:'all 0.35s ease',
@@ -96,6 +97,9 @@ export default function Navbar() {
             onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#BDB5A6'}}>
             <FiSearch size={17}/>
           </button>
+
+          {/* Theme Toggle */}
+          <ThemeToggle compact />
 
           {/* Cart */}
           <Link to="/cart" style={{...S.iconBtn, position:'relative'}}

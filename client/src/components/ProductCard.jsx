@@ -56,6 +56,8 @@ export default function ProductCard({ product }) {
 
         <img
           src={product.images?.[0] || 'https://placehold.co/400x400/1A1A24/D4AF37?text=ShopZone'}
+          loading="lazy"
+          onError={e => { e.target.src = 'https://placehold.co/400x400/1A1A24/7A7268?text=No+Image' }}
           alt={product.name}
           onLoad={() => setImgLoaded(true)}
           style={{

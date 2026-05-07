@@ -1,4 +1,4 @@
-// server/controllers/adminController.js  ← REPLACE
+// server/controllers/adminController.js
 const asyncHandler = require('express-async-handler')
 const User    = require('../models/User')
 const Product = require('../models/Product')
@@ -6,7 +6,7 @@ const Order   = require('../models/Order')
 
 // GET /api/admin/stats
 exports.getStats = asyncHandler(async (_, res) => {
-  const [totalUsers, totalProducts, totalOrders, revenueAgg] = await Promise.all([
+  const [totalUsers, totalProducts, totalOrders, revenueAgg, pendingSellers] = await Promise.all([
     User.countDocuments(),
     Product.countDocuments(),
     Order.countDocuments(),
@@ -14,12 +14,14 @@ exports.getStats = asyncHandler(async (_, res) => {
       { $match: { status: { $ne: 'cancelled' } } },
       { $group: { _id: null, total: { $sum: '$totalPrice' } } },
     ]),
+    User.countDocuments({ 'sellerInfo.status': 'pending' }),
   ])
   res.json({
     totalUsers,
     totalProducts,
     totalOrders,
     totalRevenue: revenueAgg[0]?.total || 0,
+    pendingSellers,
   })
 })
 
@@ -36,7 +38,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   const products = await Product.find(filter)
     .sort({ createdAt: -1 }).skip(skip).limit(Number(limit))
     .populate('seller', 'name')
-  res.json({ products, total })
+  res.json({ products, total, page: Number(page), pages: Math.ceil(total / Number(limit)) })
 })
 
 exports.createProduct = asyncHandler(async (req, res) => {
@@ -66,7 +68,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find(filter)
     .sort({ createdAt: -1 }).skip(skip).limit(Number(limit))
     .populate('user', 'name email')
-  res.json({ orders, total })
+  res.json({ orders, total, page: Number(page), pages: Math.ceil(total / Number(limit)) })
 })
 
 exports.updateOrderStatus = asyncHandler(async (req, res) => {
@@ -78,10 +80,8 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
   order.statusHistory.push({ status, note: note || '' })
   if (status === 'delivered') order.deliveredAt = new Date()
   if (status === 'cancelled') order.cancelledAt = new Date()
-
   await order.save()
 
-  // Notify user
   await User.findByIdAndUpdate(order.user, {
     $push: {
       notifications: {
@@ -89,7 +89,6 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
       },
     },
   })
-
   res.json(order)
 })
 
@@ -105,14 +104,12 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   const total = await User.countDocuments(filter)
   const users = await User.find(filter).select('-password')
     .sort({ createdAt: -1 }).skip(skip).limit(Number(limit))
-  res.json({ users, total })
+  res.json({ users, total, page: Number(page), pages: Math.ceil(total / Number(limit)) })
 })
 
 exports.updateUserRole = asyncHandler(async (req, res) => {
   const { role } = req.body
-  const user = await User.findByIdAndUpdate(
-    req.params.id, { role }, { new: true }
-  ).select('-password')
+  const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password')
   if (!user) return res.status(404).json({ message: 'User not found' })
   res.json(user)
 })
@@ -123,10 +120,50 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   res.json({ message: 'User deleted' })
 })
 
+// ── Seller Approval System ───────────────────────────────────────────────────
+exports.getPendingSellers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query
+  const filter = { 'sellerInfo.status': 'pending' }
+  const skip  = (Number(page) - 1) * Number(limit)
+  const total = await User.countDocuments(filter)
+  const users = await User.find(filter).select('-password')
+    .sort({ 'sellerInfo.appliedAt': 1 }).skip(skip).limit(Number(limit))
+  res.json({ users, total, page: Number(page), pages: Math.ceil(total / Number(limit)) })
+})
+
 exports.approveSeller = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id)
   if (!user) return res.status(404).json({ message: 'User not found' })
-  user.sellerInfo.approved = true
+
+  user.role                  = 'seller'
+  user.sellerInfo.status     = 'approved'
+  user.sellerInfo.approved   = true
+  user.sellerInfo.reviewedAt = new Date()
+
+  // Notify seller
+  user.notifications.push({
+    message: `🎉 Congratulations! Your seller application for "${user.sellerInfo.storeName}" has been approved. You can now list products.`,
+  })
+
   await user.save()
-  res.json({ message: `${user.name} approved as seller` })
+  res.json({ message: `${user.name} approved as seller`, user: { _id: user._id, name: user.name, role: user.role } })
+})
+
+exports.rejectSeller = asyncHandler(async (req, res) => {
+  const { reason = 'Application does not meet our requirements.' } = req.body
+  const user = await User.findById(req.params.id)
+  if (!user) return res.status(404).json({ message: 'User not found' })
+
+  user.sellerInfo.status       = 'rejected'
+  user.sellerInfo.approved     = false
+  user.sellerInfo.reviewedAt   = new Date()
+  user.sellerInfo.rejectReason = reason
+
+  // Notify seller
+  user.notifications.push({
+    message: `Your seller application was not approved. Reason: ${reason}. You may reapply after addressing the issues.`,
+  })
+
+  await user.save()
+  res.json({ message: `${user.name} seller application rejected` })
 })

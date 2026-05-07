@@ -1,12 +1,14 @@
 // client/src/pages/AboutPage.jsx
 import { Link } from 'react-router-dom'
+import SEOHead from '../components/SEOHead'
 import { FiLinkedin, FiGithub, FiTwitter, FiArrowRight, FiCode, FiHeart, FiStar, FiTrendingUp, FiUsers, FiShoppingBag } from 'react-icons/fi'
 
 const FOUNDERS = [
   {
     name:    'Sabin Prasad Subedi',
-    role:    'Co-Founder & CEO',
-    avatar:  'SP',
+    role:    'Founder & CEO',
+    photo:   '/founders/sabin.jpeg',
+    initials:'SP',
     gradient:'linear-gradient(135deg, #D4AF37 0%, #A8861A 100%)',
     bio:     'Visionary entrepreneur and full-stack architect with a passion for building scalable, AI-powered platforms. Sabin leads product strategy and engineering at ShopZone, driven by the belief that world-class technology should be accessible to everyone in Nepal and beyond.',
     expertise: ['Full-Stack Development', 'AI/ML Integration', 'Product Strategy', 'System Architecture'],
@@ -17,9 +19,10 @@ const FOUNDERS = [
   {
     name:    'Jeevan Shakya',
     role:    'Co-Founder & CTO',
-    avatar:  'JS',
+    photo:   '/founders/jeevan.jpeg',
+    initials:'JS',
     gradient:'linear-gradient(135deg, #00D4AA 0%, #007A63 100%)',
-    bio:     'Creative technologist and UI/UX innovator who transforms complex problems into elegant, human-centered solutions. Jeevan architects ShopZone\'s technical foundation, ensuring every interaction feels premium, fast, and intuitive for millions of users.',
+    bio:     "Creative technologist and UI/UX innovator who transforms complex problems into elegant, human-centered solutions. Jeevan architects ShopZone's technical foundation, ensuring every interaction feels premium, fast, and intuitive.",
     expertise: ['Backend Architecture', 'DevOps & Cloud', 'UI/UX Design', 'Database Engineering'],
     quote:   '"Great products aren\'t built — they\'re crafted with love, code, and obsession."',
     social:  { linkedin: '#', github: '#', twitter: '#' },
@@ -29,9 +32,9 @@ const FOUNDERS = [
 
 const MILESTONES = [
   { year:'2022', title:'The Idea', desc:'Sabin and Jeevan met at a hackathon in Kathmandu, united by a shared frustration with outdated ecommerce experiences.' },
-  { year:'2023', title:'First Build', desc:'Six months of late nights in a tiny office. The first version of ShopZone launched with 200 products and 50 users.' },
+  { year:'2023', title:'First Build', desc:'Six months of late nights. The first version of ShopZone launched with 200 products and 50 users.' },
   { year:'2024', title:'AI Integration', desc:'Integrated Claude AI for smart recommendations. User engagement tripled. 10,000 products, 100,000 users.' },
-  { year:'2025', title:'Going National', desc:'ShopZone became Nepal\'s fastest-growing ecommerce platform. 50,000 products, 2M+ satisfied customers.' },
+  { year:'2025', title:'Going National', desc:"ShopZone became Nepal's fastest-growing ecommerce platform. 50,000 products, 2M+ satisfied customers." },
 ]
 
 const VALUES = [
@@ -44,194 +47,183 @@ const VALUES = [
 export default function AboutPage() {
   return (
     <div style={{ background:'var(--dark)', minHeight:'100vh' }}>
+    <SEOHead title="About Us" description="Meet the founders of ShopZone Nepal — Sabin Prasad Subedi and Jeevan Shakya. Learn our story, mission and values."/>
+
+      {/* SEO Meta */}
+      <title>About Us — ShopZone Nepal</title>
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{
         background: 'radial-gradient(ellipse at 60% 40%, rgba(212,175,55,0.1) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(0,212,170,0.06) 0%, transparent 50%)',
         borderBottom: '1px solid var(--dark-5)',
-        padding: 'clamp(4rem,10vw,8rem) 1.25rem',
+        padding: 'clamp(5rem,10vw,9rem) 1.25rem',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Grid pattern */}
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(212,175,55,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.03) 1px, transparent 1px)', backgroundSize:'50px 50px', pointerEvents:'none' }}/>
-
         <div style={{ maxWidth:800, margin:'0 auto', position:'relative' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.25)', borderRadius:999, padding:'6px 16px', marginBottom:'1.5rem' }}>
-            <span style={{ fontSize:'0.75rem', color:'var(--gold)', fontWeight:700, letterSpacing:'0.1em' }}>🇳🇵 PROUDLY NEPALI</span>
-          </div>
+          <span style={{ display:'inline-block', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.25)', color:'var(--gold)', padding:'6px 18px', borderRadius:20, fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'1.5rem' }}>
+            Our Story
+          </span>
           <h1 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(2.5rem,6vw,4.5rem)', fontWeight:900, color:'var(--text-1)', lineHeight:1.1, marginBottom:'1.5rem' }}>
-            Built with{' '}
-            <span style={{ background:'linear-gradient(135deg,#F0D060,#D4AF37,#A8861A)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>
-              Passion
+            Built in Nepal,<br/>
+            <span style={{ WebkitTextFillColor:'transparent', WebkitBackgroundClip:'text', backgroundClip:'text', background:'linear-gradient(135deg,#F0D060,#D4AF37,#A8861A)' }}>
+              For the World
             </span>
-            {', '}
-            <br/>
-            Powered by Innovation
           </h1>
-          <p style={{ fontSize:'1.1rem', color:'var(--text-2)', lineHeight:1.8, maxWidth:600, margin:'0 auto 2.5rem' }}>
-            ShopZone is more than an ecommerce platform — it's a mission to democratize commerce in Nepal and connect local sellers with the world.
+          <p style={{ fontSize:'clamp(1rem,2vw,1.2rem)', color:'var(--text-2)', maxWidth:600, margin:'0 auto 2.5rem', lineHeight:1.7 }}>
+            ShopZone is Nepal's premier AI-powered eCommerce platform. We're on a mission to connect Nepali buyers and sellers with the world.
           </p>
-          <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
-            <Link to="/products" className="btn-primary" style={{ fontSize:'1rem', padding:'13px 28px' }}>
-              Shop Now <FiArrowRight size={15}/>
+          <div style={{ display:'flex', gap:'1rem', justifyContent:'center', flexWrap:'wrap' }}>
+            <Link to="/products" className="btn-primary" style={{ padding:'14px 28px' }}>
+              Shop Now <FiArrowRight size={16}/>
             </Link>
-            <Link to="/become-seller" className="btn-outline" style={{ fontSize:'1rem', padding:'12px 24px' }}>
-              <FiShoppingBag size={15}/> Become a Seller
+            <Link to="/become-seller" className="btn-outline" style={{ padding:'14px 28px' }}>
+              <FiShoppingBag size={16}/> Sell With Us
             </Link>
           </div>
-        </div>
-      </section>
-
-      {/* ── STATS ─────────────────────────────────────────────────────────────── */}
-      <section style={{ borderBottom:'1px solid var(--dark-5)', background:'var(--dark-2)' }}>
-        <div style={{ maxWidth:1280, margin:'0 auto', padding:'2.5rem 1.25rem', display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'2rem', textAlign:'center' }}>
-          {[
-            { value:'50,000+', label:'Products', icon:'📦' },
-            { value:'2M+',     label:'Customers', icon:'👥' },
-            { value:'10,000+', label:'Sellers',   icon:'🏪' },
-            { value:'99.9%',   label:'Uptime',    icon:'⚡' },
-          ].map(({ value, label, icon }) => (
-            <div key={label}>
-              <div style={{ fontSize:'2rem', marginBottom:6 }}>{icon}</div>
-              <p style={{ fontFamily:'"Space Mono",monospace', fontSize:'1.8rem', fontWeight:700, color:'var(--gold)', lineHeight:1 }}>{value}</p>
-              <p style={{ fontSize:'0.8rem', color:'var(--text-3)', marginTop:4, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600 }}>{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── OUR STORY ─────────────────────────────────────────────────────────── */}
-      <section style={{ maxWidth:900, margin:'0 auto', padding:'5rem 1.25rem' }}>
-        <p style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--gold)', letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12, textAlign:'center' }}>Our Story</p>
-        <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.8rem,4vw,3rem)', fontWeight:800, color:'var(--text-1)', textAlign:'center', marginBottom:'1.5rem', lineHeight:1.2 }}>
-          From a Kathmandu Hackathon<br/>to Nepal's Leading Platform
-        </h2>
-        <p style={{ color:'var(--text-2)', lineHeight:1.9, fontSize:'1rem', textAlign:'center', maxWidth:680, margin:'0 auto', marginBottom:'3rem' }}>
-          In 2022, two friends with laptops, strong coffee, and a shared dream decided to build something that would change how Nepal shops. What started as a weekend hackathon project became ShopZone — a full-scale AI-powered ecommerce platform serving millions.
-        </p>
-
-        {/* Timeline */}
-        <div style={{ position:'relative', paddingLeft:'2rem' }}>
-          <div style={{ position:'absolute', left:0, top:0, bottom:0, width:2, background:'linear-gradient(180deg, var(--gold) 0%, rgba(212,175,55,0.1) 100%)' }}/>
-          {MILESTONES.map(({ year, title, desc }, i) => (
-            <div key={year} style={{ position:'relative', marginBottom:'2.5rem', paddingLeft:'1.5rem' }}>
-              <div style={{ position:'absolute', left:-10, top:6, width:20, height:20, borderRadius:'50%', background: i===MILESTONES.length-1 ? 'var(--gold)' : 'var(--dark-4)', border:`2px solid ${i===MILESTONES.length-1 ? 'var(--gold)' : 'var(--dark-5)'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                {i===MILESTONES.length-1 && <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--dark)' }}/>}
-              </div>
-              <span style={{ fontFamily:'"Space Mono",monospace', fontSize:'0.75rem', color:'var(--gold)', fontWeight:700 }}>{year}</span>
-              <h3 style={{ fontFamily:'"Playfair Display",serif', fontSize:'1.2rem', fontWeight:700, color:'var(--text-1)', margin:'4px 0 6px' }}>{title}</h3>
-              <p style={{ fontSize:'0.9rem', color:'var(--text-3)', lineHeight:1.7 }}>{desc}</p>
-            </div>
-          ))}
         </div>
       </section>
 
       {/* ── FOUNDERS ─────────────────────────────────────────────────────────── */}
-      <section style={{ borderTop:'1px solid var(--dark-5)', background:'var(--dark-2)', padding:'5rem 1.25rem' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <div style={{ textAlign:'center', marginBottom:'3.5rem' }}>
-            <p style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--gold)', letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12 }}>The Team</p>
-            <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.8rem,4vw,3rem)', fontWeight:800, color:'var(--text-1)' }}>Meet the Founders</h2>
-          </div>
+      <section style={{ padding:'clamp(4rem,8vw,7rem) 1.25rem', maxWidth:1100, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:'3.5rem' }}>
+          <p style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--gold)', letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:10 }}>Meet the Team</p>
+          <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.8rem,4vw,3rem)', fontWeight:800, color:'var(--text-1)', marginBottom:12 }}>The Founders</h2>
+          <p style={{ color:'var(--text-3)', fontSize:'0.95rem', maxWidth:480, margin:'0 auto' }}>Two friends. One vision. Building Nepal's tech future.</p>
+        </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(440px, 1fr))', gap:'2rem' }}>
-            {FOUNDERS.map(({ name, role, avatar, gradient, bio, expertise, quote, social, flag }) => (
-              <div key={name} style={{ background:'var(--dark-3)', border:'1px solid var(--dark-5)', borderRadius:24, overflow:'hidden', transition:'all 0.35s', position:'relative' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(212,175,55,0.25)'; e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.4)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor='var(--dark-5)'; e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none' }}
-              >
-                {/* Top accent line */}
-                <div style={{ height:3, background:gradient }}/>
-
-                <div style={{ padding:'2.5rem' }}>
-                  <div style={{ display:'flex', gap:'1.5rem', alignItems:'flex-start', marginBottom:'1.5rem' }}>
-                    {/* Avatar */}
-                    <div style={{ flexShrink:0 }}>
-                      <div style={{ width:80, height:80, borderRadius:20, background:gradient, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'"Playfair Display",serif', fontSize:'1.8rem', fontWeight:900, color:'#0A0A0F', boxShadow:`0 8px 32px rgba(0,0,0,0.4)`, position:'relative' }}>
-                        {avatar}
-                        <span style={{ position:'absolute', bottom:-4, right:-4, fontSize:'1.2rem' }}>{flag}</span>
-                      </div>
-                    </div>
-                    {/* Name & role */}
-                    <div>
-                      <h3 style={{ fontFamily:'"Playfair Display",serif', fontSize:'1.35rem', fontWeight:800, color:'var(--text-1)', marginBottom:4, lineHeight:1.2 }}>{name}</h3>
-                      <p style={{ fontSize:'0.8rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--gold)', marginBottom:'0.75rem' }}>{role}</p>
-                      <div style={{ display:'flex', gap:6 }}>
-                        {Object.entries(social).map(([platform, url]) => {
-                          const icons = { linkedin: FiLinkedin, github: FiGithub, twitter: FiTwitter }
-                          const Icon = icons[platform]
-                          return (
-                            <a key={platform} href={url} style={{ width:28, height:28, borderRadius:7, background:'var(--dark-4)', border:'1px solid var(--dark-5)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-3)', transition:'all 0.2s' }}
-                              onMouseEnter={e => { e.currentTarget.style.background='rgba(212,175,55,0.12)'; e.currentTarget.style.color='var(--gold)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background='var(--dark-4)'; e.currentTarget.style.color='var(--text-3)' }}
-                            ><Icon size={12}/></a>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bio */}
-                  <p style={{ fontSize:'0.9rem', color:'var(--text-2)', lineHeight:1.8, marginBottom:'1.5rem' }}>{bio}</p>
-
-                  {/* Quote */}
-                  <div style={{ background:'var(--dark-4)', border:'1px solid var(--dark-5)', borderLeft:'3px solid var(--gold)', borderRadius:'0 12px 12px 0', padding:'1rem 1.25rem', marginBottom:'1.5rem' }}>
-                    <p style={{ fontSize:'0.875rem', color:'var(--text-2)', lineHeight:1.6, fontStyle:'italic' }}>{quote}</p>
-                  </div>
-
-                  {/* Expertise tags */}
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                    {expertise.map(tag => (
-                      <span key={tag} style={{ fontSize:'0.7rem', fontWeight:600, padding:'4px 10px', borderRadius:6, background:'var(--dark-4)', color:'var(--text-2)', border:'1px solid var(--dark-5)' }}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap:'2rem' }}>
+          {FOUNDERS.map((f) => (
+            <div key={f.name} style={{
+              background:'var(--dark-3)', border:'1px solid var(--dark-5)',
+              borderRadius:28, overflow:'hidden',
+              transition:'all 0.4s cubic-bezier(0.16,1,0.3,1)',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-6px)'; e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.4)'; e.currentTarget.style.borderColor='rgba(212,175,55,0.2)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.borderColor='var(--dark-5)' }}
+            >
+              {/* Photo */}
+              <div style={{ position:'relative', aspectRatio:'4/3', overflow:'hidden', background:'var(--dark-4)' }}>
+                <img
+                  src={f.photo}
+                  alt={f.name}
+                  style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', display:'block' }}
+                  onError={e => {
+                    e.target.style.display = 'none'
+                    e.target.nextSibling.style.display = 'flex'
+                  }}
+                />
+                {/* Fallback avatar */}
+                <div style={{ display:'none', alignItems:'center', justifyContent:'center', width:'100%', height:'100%', background:f.gradient, fontSize:'4rem', fontWeight:900, color:'rgba(255,255,255,0.9)', fontFamily:'"Playfair Display",serif', position:'absolute', inset:0 }}>
+                  {f.initials}
                 </div>
+                {/* Gradient overlay */}
+                <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'50%', background:'linear-gradient(transparent, var(--dark-3))' }}/>
+                {/* Flag */}
+                <div style={{ position:'absolute', top:14, right:14, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(8px)', borderRadius:20, padding:'4px 12px', fontSize:'0.85rem' }}>
+                  {f.flag}
+                </div>
+              </div>
+
+              {/* Info */}
+              <div style={{ padding:'1.75rem' }}>
+                <div style={{ marginBottom:'1rem' }}>
+                  <h3 style={{ fontFamily:'"Playfair Display",serif', fontSize:'1.35rem', fontWeight:800, color:'var(--text-1)', marginBottom:4 }}>{f.name}</h3>
+                  <p style={{ fontSize:'0.8rem', fontWeight:700, color:'var(--gold)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{f.role}</p>
+                </div>
+
+                <p style={{ color:'var(--text-2)', fontSize:'0.875rem', lineHeight:1.7, marginBottom:'1.25rem' }}>{f.bio}</p>
+
+                {/* Quote */}
+                <blockquote style={{ borderLeft:'3px solid var(--gold)', paddingLeft:'1rem', marginBottom:'1.25rem', fontStyle:'italic', color:'var(--text-3)', fontSize:'0.85rem', lineHeight:1.6 }}>
+                  {f.quote}
+                </blockquote>
+
+                {/* Expertise */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:'1.25rem' }}>
+                  {f.expertise.map(s => (
+                    <span key={s} style={{ padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:600, background:'rgba(212,175,55,0.08)', color:'var(--gold)', border:'1px solid rgba(212,175,55,0.15)' }}>{s}</span>
+                  ))}
+                </div>
+
+                {/* Social */}
+                <div style={{ display:'flex', gap:10 }}>
+                  {[{ icon:FiLinkedin, href:f.social.linkedin }, { icon:FiGithub, href:f.social.github }, { icon:FiTwitter, href:f.social.twitter }].map(({ icon:Icon, href }, i) => (
+                    <a key={i} href={href} target="_blank" rel="noreferrer" style={{ width:34, height:34, borderRadius:8, background:'var(--dark-4)', border:'1px solid var(--dark-5)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-3)', transition:'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background='rgba(212,175,55,0.1)'; e.currentTarget.style.color='var(--gold)'; e.currentTarget.style.borderColor='rgba(212,175,55,0.3)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background='var(--dark-4)'; e.currentTarget.style.color='var(--text-3)'; e.currentTarget.style.borderColor='var(--dark-5)' }}>
+                      <Icon size={14}/>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── VALUES ──────────────────────────────────────────────────────────── */}
+      <section style={{ padding:'clamp(3rem,6vw,6rem) 1.25rem', background:'var(--dark-2)', borderTop:'1px solid var(--dark-5)', borderBottom:'1px solid var(--dark-5)' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:'3rem' }}>
+            <p style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--gold)', letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:10 }}>What We Believe</p>
+            <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.8rem,4vw,2.8rem)', fontWeight:800, color:'var(--text-1)' }}>Our Core Values</h2>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'1.5rem' }}>
+            {VALUES.map(v => (
+              <div key={v.title} style={{ background:'var(--dark-3)', border:'1px solid var(--dark-5)', borderRadius:20, padding:'1.75rem', transition:'all 0.3s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor=v.color+'55'; e.currentTarget.style.transform='translateY(-4px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='var(--dark-5)'; e.currentTarget.style.transform='none' }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:`${v.color}18`, border:`1px solid ${v.color}33`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1rem' }}>
+                  <v.icon size={20} style={{ color: v.color }}/>
+                </div>
+                <h3 style={{ fontFamily:'"Playfair Display",serif', fontSize:'1.1rem', fontWeight:700, color:'var(--text-1)', marginBottom:8 }}>{v.title}</h3>
+                <p style={{ color:'var(--text-3)', fontSize:'0.875rem', lineHeight:1.6 }}>{v.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── VALUES ───────────────────────────────────────────────────────────── */}
-      <section style={{ maxWidth:1100, margin:'0 auto', padding:'5rem 1.25rem' }}>
-        <div style={{ textAlign:'center', marginBottom:'3rem' }}>
-          <p style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--gold)', letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12 }}>What We Believe</p>
-          <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.8rem,4vw,3rem)', fontWeight:800, color:'var(--text-1)' }}>Our Core Values</h2>
+      {/* ── TIMELINE ─────────────────────────────────────────────────────────── */}
+      <section style={{ padding:'clamp(4rem,8vw,7rem) 1.25rem', maxWidth:800, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:'3.5rem' }}>
+          <p style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--gold)', letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:10 }}>Our Journey</p>
+          <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.8rem,4vw,2.8rem)', fontWeight:800, color:'var(--text-1)' }}>Key Milestones</h2>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px,1fr))', gap:'1.25rem' }}>
-          {VALUES.map(({ icon: Icon, title, desc, color }) => (
-            <div key={title} className="card-glow" style={{ transition:'transform 0.3s' }}
-              onMouseEnter={e => e.currentTarget.style.transform='translateY(-4px)'}
-              onMouseLeave={e => e.currentTarget.style.transform='translateY(0)'}
-            >
-              <div style={{ width:46, height:46, borderRadius:12, background:`${color}15`, border:`1px solid ${color}30`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.25rem' }}>
-                <Icon size={20} style={{ color }} />
+        <div style={{ position:'relative' }}>
+          <div style={{ position:'absolute', left:'50%', top:0, bottom:0, width:2, background:'linear-gradient(var(--gold), var(--dark-5))', transform:'translateX(-50%)', opacity:0.3 }} className="hidden md:block"/>
+          {MILESTONES.map((m, i) => (
+            <div key={m.year} style={{ display:'flex', gap:'2rem', marginBottom:'2.5rem', alignItems:'flex-start', flexDirection: i % 2 === 0 ? 'row' : 'row-reverse' }} className="md:flex">
+              <div style={{ flex:1, textAlign: i % 2 === 0 ? 'right' : 'left' }} className="hidden md:block">
+                <span style={{ fontFamily:'"Space Mono",monospace', fontSize:'2rem', fontWeight:700, color:'var(--gold)', opacity:0.4 }}>{m.year}</span>
               </div>
-              <h3 style={{ fontFamily:'"Playfair Display",serif', fontSize:'1.1rem', fontWeight:700, color:'var(--text-1)', marginBottom:8 }}>{title}</h3>
-              <p style={{ fontSize:'0.875rem', color:'var(--text-3)', lineHeight:1.7 }}>{desc}</p>
+              <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,var(--gold-light),var(--gold))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 0 20px rgba(212,175,55,0.4)', zIndex:1 }}>
+                <FiStar size={16} style={{ color:'#0A0A0F' }}/>
+              </div>
+              <div style={{ flex:1, background:'var(--dark-3)', border:'1px solid var(--dark-5)', borderRadius:18, padding:'1.25rem 1.5rem' }}>
+                <div className="md:hidden" style={{ fontSize:'0.75rem', fontWeight:700, color:'var(--gold)', marginBottom:4 }}>{m.year}</div>
+                <h4 style={{ fontFamily:'"Playfair Display",serif', fontSize:'1.1rem', fontWeight:700, color:'var(--text-1)', marginBottom:6 }}>{m.title}</h4>
+                <p style={{ color:'var(--text-3)', fontSize:'0.875rem', lineHeight:1.6 }}>{m.desc}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────────────── */}
-      <section style={{ background:'var(--dark-2)', borderTop:'1px solid var(--dark-5)', padding:'4rem 1.25rem', textAlign:'center' }}>
-        <div style={{ maxWidth:600, margin:'0 auto' }}>
-          <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.6rem,3vw,2.5rem)', fontWeight:800, color:'var(--text-1)', marginBottom:'1rem' }}>
-            Ready to Join the Revolution?
-          </h2>
-          <p style={{ color:'var(--text-3)', marginBottom:'2rem' }}>Join over 2 million customers who trust ShopZone for premium shopping.</p>
-          <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
-            <Link to="/register" className="btn-primary" style={{ fontSize:'1rem', padding:'13px 28px' }}>Create Free Account</Link>
-            <Link to="/products" className="btn-outline"  style={{ fontSize:'1rem', padding:'12px 24px' }}>Browse Products</Link>
-          </div>
+      <section style={{ padding:'clamp(4rem,8vw,6rem) 1.25rem', textAlign:'center', background:'var(--dark-2)', borderTop:'1px solid var(--dark-5)' }}>
+        <h2 style={{ fontFamily:'"Playfair Display",serif', fontSize:'clamp(1.6rem,4vw,2.8rem)', fontWeight:800, color:'var(--text-1)', marginBottom:16, maxWidth:600, margin:'0 auto 1rem' }}>
+          Ready to Join the ShopZone Family?
+        </h2>
+        <p style={{ color:'var(--text-3)', marginBottom:'2.5rem', fontSize:'0.95rem' }}>Whether you're a buyer or a seller, there's a place for you here.</p>
+        <div style={{ display:'flex', gap:'1rem', justifyContent:'center', flexWrap:'wrap' }}>
+          <Link to="/products" className="btn-primary" style={{ padding:'14px 32px' }}>Start Shopping <FiArrowRight size={15}/></Link>
+          <Link to="/become-seller" className="btn-outline" style={{ padding:'14px 32px' }}><FiShoppingBag size={15}/> Sell With Us</Link>
         </div>
       </section>
-
     </div>
   )
 }

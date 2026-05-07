@@ -1,9 +1,10 @@
 // client/src/pages/admin/AdminUsers.jsx
 import { useEffect, useState } from 'react'
-import { FiSearch, FiShield, FiUser, FiTrash2 } from 'react-icons/fi'
+import { FiSearch, FiShield, FiUser, FiTrash2, FiCheck } from 'react-icons/fi'
 import api from '../../api/axios'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import { SkeletonTable } from '../../components/ui/Skeleton'
+import Pagination from '../../components/ui/Pagination'
 import toast from 'react-hot-toast'
 
 export default function AdminUsers() {
@@ -80,9 +81,16 @@ export default function AdminUsers() {
                       </td>
                       <td className="text-sm text-gray-500">{user.email}</td>
                       <td>
-                        <span className={user.role === 'admin' ? 'badge-orange' : user.role === 'seller' ? 'badge-blue' : 'badge-gray'}>
-                          {user.role}
-                        </span>
+                        <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                          <span className={user.role === 'admin' ? 'badge-orange' : user.role === 'seller' ? 'badge-blue' : 'badge-gray'}>
+                            {user.role}
+                          </span>
+                          {user.sellerInfo?.status && (
+                            <span className={user.sellerInfo.status === 'approved' ? 'badge-green' : user.sellerInfo.status === 'rejected' ? 'badge-red' : 'badge-yellow'} style={{fontSize:'0.65rem'}}>
+                              {user.sellerInfo.status}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="text-xs text-gray-400">{new Date(user.createdAt).toLocaleDateString()}</td>
                       <td>

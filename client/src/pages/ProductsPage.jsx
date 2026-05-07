@@ -1,10 +1,12 @@
 // client/src/pages/ProductsPage.jsx
 import { useEffect, useState, useCallback } from 'react'
+import SEOHead from '../components/SEOHead'
 import { useSearchParams } from 'react-router-dom'
 import { FiFilter, FiX, FiChevronDown, FiGrid, FiList, FiSearch } from 'react-icons/fi'
 import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
 import { SkeletonCard } from '../components/ui/Skeleton'
+import Pagination from '../components/ui/Pagination'
 
 const CATEGORIES = ['Electronics','Fashion','Home & Garden','Sports','Books','Beauty','Toys','Grocery','Other']
 const SORTS = [
@@ -177,21 +179,7 @@ export default function ProductsPage() {
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))', gap:'1.25rem' }}>
                 {products.map(p => <ProductCard key={p._id} product={p}/>)}
               </div>
-              {totalPages > 1 && (
-                <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:'2.5rem', flexWrap:'wrap' }}>
-                  <button disabled={page<=1} onClick={() => setParam('page', String(page-1))} className="btn-ghost" style={{ padding:'8px 18px', border:'1px solid var(--dark-5)', borderRadius:10, opacity:page<=1?0.4:1 }}>← Prev</button>
-                  {Array.from({ length: Math.min(totalPages,7) }, (_,i) => i+1).map(p2 => (
-                    <button key={p2} onClick={() => setParam('page', String(p2))} style={{
-                      width:36, height:36, borderRadius:9, fontSize:'0.875rem', fontWeight:600,
-                      background: p2===page ? 'var(--gold)' : 'var(--dark-4)',
-                      color: p2===page ? '#0A0A0F' : 'var(--text-2)',
-                      border: `1px solid ${p2===page ? 'var(--gold)' : 'var(--dark-5)'}`,
-                      cursor:'pointer', transition:'all 0.2s',
-                    }}>{p2}</button>
-                  ))}
-                  <button disabled={page>=totalPages} onClick={() => setParam('page', String(page+1))} className="btn-ghost" style={{ padding:'8px 18px', border:'1px solid var(--dark-5)', borderRadius:10, opacity:page>=totalPages?0.4:1 }}>Next →</button>
-                </div>
-              )}
+              <Pagination page={page} totalPages={totalPages} onPageChange={(p) => setParam('page', String(p))} loading={loading}/>
             </>
           )}
         </div>

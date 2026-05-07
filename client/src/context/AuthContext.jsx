@@ -72,7 +72,8 @@ export function AuthProvider({ children }) {
 
   // ── Role helpers ──────────────────────────────────────────────────────────
   const isAdmin  = user?.role === 'admin'
-  const isSeller = user?.role === 'seller' && user?.sellerInfo?.approved
+  // isSeller = role is 'seller' AND either status is 'approved' or legacy approved=true
+  const isSeller = user?.role === 'seller' && (user?.sellerInfo?.status === 'approved' || user?.sellerInfo?.approved === true)
   const isUser   = !!user
 
   // ── Notification helpers ──────────────────────────────────────────────────

@@ -27,6 +27,7 @@ import AdminProducts   from './pages/admin/AdminProducts'
 import AdminOrders     from './pages/admin/AdminOrders'
 import AdminUsers      from './pages/admin/AdminUsers'
 import AdminAnalytics  from './pages/admin/AdminAnalytics'
+import AdminSellers    from './pages/admin/AdminSellers'
 
 // Seller pages
 import SellerDashboard  from './pages/seller/SellerDashboard'
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/admin/products"  element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/orders"    element={<AdminRoute><AdminOrders /></AdminRoute>} />
           <Route path="/admin/users"     element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/sellers"   element={<AdminRoute><AdminSellers /></AdminRoute>} />
 
           {/* ── 404 ── */}
           <Route path="*" element={

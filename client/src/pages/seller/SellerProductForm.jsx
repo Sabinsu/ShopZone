@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+import ImageUpload from '../../components/ui/ImageUpload'
 
 const CATEGORIES = ['Electronics','Fashion','Home & Garden','Sports','Books','Beauty','Toys','Grocery','Other']
-const BLANK = { name: '', category: 'Electronics', price: '', comparePrice: '', stock: '', description: '', images: [] }
+const BLANK = { name: '', category: 'Electronics', price: '', comparePrice: '', stock: '', description: '', images: [], isFeatured: false }
 
 export default function SellerProductForm() {
   const { id }   = useParams()
@@ -29,6 +30,8 @@ export default function SellerProductForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!form.name.trim()) return toast.error('Product name is required')
+    if (!form.price || isNaN(form.price)) return toast.error('Valid price is required')
     setSaving(true)
     try {
       if (isEdit) {
@@ -44,27 +47,39 @@ export default function SellerProductForm() {
     } finally { setSaving(false) }
   }
 
-  if (loading) return <div className="flex justify-center py-20"><div className="spinner" /></div>
+  if (loading) return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:'60vh' }}>
+      <div className="spinner" style={{ width:32, height:32, borderTopColor:'var(--gold)' }}/>
+    </div>
+  )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/seller')} className="btn-ghost p-2">←</button>
-        <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Product' : 'Add New Product'}</h1>
+    <div style={{ maxWidth:660, margin:'0 auto', padding:'2rem 1.25rem' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:'1.75rem' }}>
+        <button onClick={() => navigate('/seller')} className="btn-ghost" style={{ padding:'8px 12px', border:'1px solid var(--dark-5)' }}>←</button>
+        <div>
+          <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'var(--text-1)' }}>{isEdit ? 'Edit Product' : 'Add New Product'}</h1>
+          <p style={{ fontSize:'0.8rem', color:'var(--text-3)', marginTop:2 }}>
+            {isEdit ? 'Update your product details' : 'List a new product in your store'}
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="card space-y-5">
+      <form onSubmit={handleSubmit} className="card" style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+        {/* Name */}
         <div>
           <label className="label">Product Name *</label>
           <input value={form.name} onChange={e => set('name', e.target.value)}
-            className="input" placeholder="e.g. Wireless Headphones" required />
+            className="input" placeholder="e.g. Wireless Headphones Pro" required />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Category + Stock */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
           <div>
             <label className="label">Category *</label>
-            <select value={form.category} onChange={e => set('category', e.target.value)} className="input">
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            <select value={form.category} onChange={e => set('category', e.target.value)} className="input"
+              style={{ background:'var(--input-bg)' }}>
+              {CATEGORIES.map(c => <option key={c} style={{ background:'var(--dark-3)' }}>{c}</option>)}
             </select>
           </div>
           <div>
@@ -74,7 +89,8 @@ export default function SellerProductForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Price */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
           <div>
             <label className="label">Selling Price (Rs) *</label>
             <input type="number" min="1" value={form.price} onChange={e => set('price', e.target.value)}
@@ -83,48 +99,47 @@ export default function SellerProductForm() {
           <div>
             <label className="label">Original Price (Rs)</label>
             <input type="number" value={form.comparePrice} onChange={e => set('comparePrice', e.target.value)}
-              className="input" placeholder="1299 (for discount badge)" />
+              className="input" placeholder="1299 (shows discount)" />
           </div>
         </div>
 
+        {/* Description */}
         <div>
           <label className="label">Description</label>
           <textarea value={form.description} onChange={e => set('description', e.target.value)}
-            rows={4} className="input resize-none"
-            placeholder="Describe your product in detail — features, specs, what's in the box..." />
+            rows={4} className="input" style={{ resize:'none' }}
+            placeholder="Describe your product — features, specs, what's included..." />
         </div>
 
+        {/* Images */}
         <div>
-          <label className="label">Image URLs <span className="text-gray-400 font-normal">(one per line, first is main image)</span></label>
-          <textarea
-            value={form.images?.join('\n')}
-            onChange={e => set('images', e.target.value.split('\n').filter(Boolean))}
-            rows={4} className="input resize-none font-mono text-xs"
-            placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+          <label className="label">Product Images <span style={{ color:'var(--text-3)', fontWeight:400 }}>(up to 5, first = main)</span></label>
+          <ImageUpload
+            images={form.images || []}
+            onChange={imgs => set('images', imgs)}
+            uploadEndpoint="/upload"
+            maxImages={5}
           />
-          {form.images?.[0] && (
-            <div className="mt-2 flex gap-2 overflow-x-auto">
-              {form.images.filter(Boolean).map((img, i) => (
-                <img key={i} src={img} alt=""
-                  className="w-16 h-16 object-cover rounded-lg bg-gray-50 flex-shrink-0 border border-gray-200"
-                  onError={e => e.target.style.display='none'}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Featured */}
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <input type="checkbox" id="feat" checked={!!form.isFeatured}
             onChange={e => set('isFeatured', e.target.checked)}
-            className="w-4 h-4 accent-orange-500" />
-          <label htmlFor="feat" className="text-sm font-medium text-gray-700 cursor-pointer">Mark as Featured Product</label>
+            style={{ width:16, height:16, accentColor:'var(--gold)', cursor:'pointer' }} />
+          <label htmlFor="feat" style={{ fontSize:'0.875rem', fontWeight:600, color:'var(--text-2)', cursor:'pointer' }}>
+            Mark as Featured Product
+          </label>
         </div>
 
-        <div className="flex gap-3 pt-2 border-t border-gray-100">
-          <button type="button" onClick={() => navigate('/seller')} className="btn-ghost flex-1">Cancel</button>
-          <button type="submit" disabled={saving} className="btn-primary flex-1 py-3">
-            {saving ? <span className="spinner w-5 h-5" /> : isEdit ? '✅ Update Product' : '🚀 Create Product'}
+        {/* Actions */}
+        <div style={{ display:'flex', gap:12, paddingTop:8, borderTop:'1px solid var(--dark-5)' }}>
+          <button type="button" onClick={() => navigate('/seller')} className="btn-ghost" style={{ flex:1, border:'1px solid var(--dark-5)' }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn-primary" style={{ flex:2, padding:'13px' }}>
+            {saving
+              ? <><span className="spinner" style={{ borderTopColor:'#0A0A0F' }}/> Saving...</>
+              : isEdit ? '✅ Update Product' : '🚀 Publish Product'
+            }
           </button>
         </div>
       </form>

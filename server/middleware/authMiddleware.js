@@ -48,7 +48,18 @@ const admin = (req, res, next) => {
 // ── sellerOrAdmin: approved seller OR admin ───────────────────────────────────
 const seller = (req, res, next) => {
   if (req.user?.role === 'admin') return next();
-  if (req.user?.role === 'seller' && req.user.sellerInfo?.approved) return next();
+  if (req.user?.role === 'admin') return next(); // admin always passes
+  if (req.user?.role === 'seller') {
+    const info = req.user.sellerInfo || {};
+    // Accept if explicitly approved OR legacy approved=true
+    if (info.status === 'approved' || info.approved === true) return next();
+    // Still pending
+    if (info.status === 'pending') {
+      return res.status(403).json({ message: 'Your seller application is still pending admin approval.' });
+    }
+    // Rejected
+    return res.status(403).json({ message: `Your seller application was rejected. Reason: ${info.rejectReason || 'Contact support.'}` });
+  }
   res.status(403).json({ message: 'Approved seller access required' });
 };
 

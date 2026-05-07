@@ -1,5 +1,6 @@
 // client/src/pages/HomePage.jsx
 import { useEffect, useState, useRef } from 'react'
+import SEOHead from '../components/SEOHead'
 import { Link, useNavigate } from 'react-router-dom'
 import { FiArrowRight, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiStar, FiZap } from 'react-icons/fi'
 import api from '../api/axios'
@@ -240,7 +241,7 @@ export default function HomePage() {
       </section>
 
       {/* ── FEATURED PRODUCTS ────────────────────────────────────────────────── */}
-      <section className="section" style={{ paddingTop:0 }}>
+      <section className="section animate-fade-in" style={{ paddingTop:0 }}>
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:'2.5rem' }}>
           <SectionHeader label="Handpicked" title="Featured Products" subtitle="Our top picks — premium quality, amazing value" />
           <Link to="/products?isFeatured=true" className="btn-outline" style={{ fontSize:'0.8rem', padding:'8px 16px', flexShrink:0, marginBottom:'2.5rem' }}>
@@ -250,7 +251,12 @@ export default function HomePage() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'1.25rem' }}>
           {loading
             ? Array(8).fill(0).map((_,i) => <SkeletonCard key={i}/>)
-            : featured.slice(0,10).map(p => <ProductCard key={p._id} product={p}/>)
+            : featured.length > 0
+              ? featured.slice(0,10).map(p => <ProductCard key={p._id} product={p}/>)
+              : <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'3rem', color:'var(--text-3)' }}>
+                  <p style={{ fontSize:'2rem', marginBottom:8 }}>🛍️</p>
+                  <p>No featured products yet — <a href="/products" style={{ color:'var(--gold)' }}>browse all products</a></p>
+                </div>
           }
         </div>
       </section>

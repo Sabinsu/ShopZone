@@ -5,6 +5,7 @@ import { FiSearch, FiChevronDown } from 'react-icons/fi'
 import api from '../../api/axios'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import { SkeletonTable } from '../../components/ui/Skeleton'
+import Pagination from '../../components/ui/Pagination'
 import toast from 'react-hot-toast'
 
 const STATUSES = ['pending','confirmed','shipped','delivered','cancelled']
